@@ -4,12 +4,25 @@ import {z, ZodType} from 'zod';
 
 export async function runKernel() {
   const kernel = new NotebookKernal();
-  kernel.loadBook(example2());
+  const notebook = localStorage.getItem('notebook') ? JSON.parse(localStorage.getItem('notebook')!) : example2();
+  kernel.loadBook(notebook);
   kernel.setCellInput(
     'showIdea',
     'I want a gritty crime drama that takes place in 1941 utah but in a universe where dinosaurs are mailmen'
   );
-  kernel.runCell('showIdea');
+  await kernel.runCell('showIdea');
+  await kernel.runCell('highLevelShowConcept');
+  await kernel.runCell('showCharacters');
+  await kernel.runCell('showBible');
+  await kernel.runCell('season');
+  await kernel.runCell('episode');
+  const result = kernel.saveBook();
+  localStorage.setItem('notebook', result);
+  debugger;
+}
+
+function zodToString(param: () => any) {
+  return param.toString().substring(param.toString().indexOf('()=>') + 4);
 }
 
 function example2() {
@@ -40,7 +53,8 @@ ai will:
       {
         input: {
           id: 'showIdea',
-          inputFeed: {},
+          dependencies: {},
+          outputType: 'infer',
           input: {
             content: 'What is your show idea? Give as much detail as possible',
             type: 'markdown',
@@ -54,7 +68,8 @@ ai will:
       {
         input: {
           id: 'highLevelShowConcept',
-          inputFeed: {
+          outputType: 'infer',
+          dependencies: {
             showIdeaItem: {
               type: 'reference',
               cellId: 'showIdeaOutput',
@@ -62,10 +77,9 @@ ai will:
           },
           input: {
             prompt:
-              'Here is a high level show concept for {{showIdeaItem}}. Write out a detailed description of the show',
-            model: 'gpt-3',
+              'Here is a high level show concept for `{{showIdeaItem}}`. Write out a detailed description of the show',
+            model: 'gpt-3.5-turbo-0125',
             type: 'aiPrompt',
-            schema: z.string({}),
             systemPrompt: 'You are a show creator writing out the show concept',
           },
         },
@@ -77,23 +91,28 @@ ai will:
       {
         input: {
           id: 'showCharacters',
-          inputFeed: {
-            showIdeaItem: {
+          outputType: 'infer',
+          dependencies: {
+            highLevelShowConceptItem: {
               type: 'reference',
-              cellId: 'showIdeaOutput',
+              cellId: 'highLevelShowConceptOutput',
             },
           },
           input: {
             prompt:
-              'Here are is the high level show concept for {{showIdeaItem}}. Write out a list of characters, their backgrounds, and their arcs, motivations, etc',
-            model: 'gpt-3',
+              'Here are is the high level show concept for `{{highLevelShowConceptItem}}`. Write out a list of characters, their backgrounds, and their arcs, motivations, etc',
+            model: 'gpt-3.5-turbo-0125',
             type: 'aiPrompt',
-            schema: z.array({
-              characterName: z.string({}),
-              characterBackground: z.string({}),
-              characterArc: z.string({}),
-              characterMotivation: z.string({}),
-            }),
+            schema: zodToString(() =>
+              z.array(
+                z.object({
+                  characterName: z.string({}),
+                  characterBackground: z.string({}),
+                  characterArc: z.string({}),
+                  characterMotivation: z.string({}),
+                })
+              )
+            ),
             systemPrompt: 'You are a show creator writing out the characters',
           },
         },
@@ -105,7 +124,8 @@ ai will:
       {
         input: {
           id: 'showBible',
-          inputFeed: {
+          outputType: 'infer',
+          dependencies: {
             showIdeaItem: {
               type: 'reference',
               cellId: 'showIdeaOutput',
@@ -117,10 +137,9 @@ ai will:
           },
           input: {
             prompt:
-              'Here are is the high level show concept for {{showIdeaItem}} and the characters {{showCharactersItem}}. Write out the show bible, including the world, the rules, the tone, the themes, etc',
-            model: 'gpt-3',
+              'Here are is the high level show concept for `{{showIdeaItem}}` and the characters `{{showCharactersItem}}`. Write out the show bible, including the world, the rules, the tone, the themes, etc',
+            model: 'gpt-3.5-turbo-0125',
             type: 'aiPrompt',
-            schema: z.string({}),
             systemPrompt: 'You are a show creator writing out the show bible',
           },
         },
@@ -132,7 +151,8 @@ ai will:
       {
         input: {
           id: 'season',
-          inputFeed: {
+          outputType: 'infer',
+          dependencies: {
             showIdeaItem: {
               type: 'reference',
               cellId: 'showIdeaOutput',
@@ -148,14 +168,18 @@ ai will:
           },
           input: {
             prompt:
-              'Here are is the high level show concept for {{showIdeaItem}}, the characters {{showCharactersItem}}, and the show bible {{showBibleItem}}. Write out a 6 episode season, their plots, and how they fit into the overall story',
-            model: 'gpt-3',
+              'Here are is the high level show concept for `{{showIdeaItem}}`, the characters `{{showCharactersItem}}`, and the show bible `{{showBibleItem}}`. Write out a 6 episode season, their plots, and how they fit into the overall story',
+            model: 'gpt-3.5-turbo-0125',
             type: 'aiPrompt',
-            schema: z.array({
-              episodeNumber: z.number({}),
-              episodePlot: z.string({}),
-              episodeFit: z.string({}),
-            }),
+            schema: zodToString(() =>
+              z.array(
+                z.object({
+                  episodeNumber: z.number({}),
+                  episodePlot: z.string({}),
+                  episodeFit: z.string({}),
+                })
+              )
+            ),
             systemPrompt: 'You are a show creator writing out the season',
           },
         },
@@ -167,7 +191,8 @@ ai will:
       {
         input: {
           id: 'episode',
-          inputFeed: {
+          outputType: 'infer',
+          dependencies: {
             showIdeaItem: {
               type: 'reference',
               cellId: 'showIdeaOutput',
@@ -187,15 +212,19 @@ ai will:
           },
           input: {
             prompt:
-              'Here are is the high level show concept for {{showIdeaItem}}, the characters {{showCharactersItem}}, the show bible {{showBibleItem}}, and the season {{seasonItem}}. Dive into the details of each episode, writing out the dialogue, the action, the pacing, etc',
-            model: 'gpt-3',
+              'Here are is the high level show concept for `{{showIdeaItem}}`, the characters `{{showCharactersItem}}`, the show bible `{{showBibleItem}}`, and the season `{{seasonItem}}`. Dive into the details of each episode, writing out the dialogue, the action, the pacing, etc',
+            model: 'gpt-3.5-turbo-0125',
             type: 'aiPrompt',
-            schema: z.array({
-              episodeNumber: z.number({}),
-              episodeDialogue: z.string({}),
-              episodeAction: z.string({}),
-              episodePacing: z.string({}),
-            }),
+            schema: zodToString(() =>
+              z.array(
+                z.object({
+                  episodeNumber: z.number({}),
+                  episodeDialogue: z.string({}),
+                  episodeAction: z.string({}),
+                  episodePacing: z.string({}),
+                })
+              )
+            ),
             systemPrompt: 'You are a show creator writing out the episode',
           },
         },
@@ -207,7 +236,8 @@ ai will:
       {
         input: {
           id: 'episodeScript',
-          inputFeed: {
+          outputType: 'infer',
+          dependencies: {
             showIdeaItem: {
               type: 'reference',
               cellId: 'showIdeaOutput',
@@ -232,10 +262,9 @@ ai will:
           },
           input: {
             prompt:
-              'Here are is the high level show concept for {{showIdeaItem}}, the characters {{showCharactersItem}}, the show bible {{showBibleItem}}, the season {{seasonItem}}. The episode is {{episodeItem}}. Write out the episode in script format',
-            model: 'gpt-3',
+              'Here are is the high level show concept for `{{showIdeaItem}}`, the characters `{{showCharactersItem}}`, the show bible `{{showBibleItem}}`, the season `{{seasonItem}}`. The episode is `{{episodeItem}}`. Write out the episode in script format',
+            model: 'gpt-3.5-turbo-0125',
             type: 'aiPrompt',
-            schema: z.string({}),
             systemPrompt: 'You are a show creator writing out the episode script',
           },
         },
@@ -247,7 +276,8 @@ ai will:
       {
         input: {
           id: 'episodeScenes',
-          inputFeed: {
+          outputType: 'infer',
+          dependencies: {
             showIdeaItem: {
               type: 'reference',
               cellId: 'showIdeaOutput',
@@ -276,13 +306,17 @@ ai will:
           },
           input: {
             prompt:
-              'Here are is the high level show concept for {{showIdeaItem}}, the characters {{showCharactersItem}}, the show bible {{showBibleItem}}, the season {{seasonItem}}, the episode {{episodeItem}}, and the episode script {{episodeScriptItem}}. Break the script down into scenes, and write out the shot list for each scene',
-            model: 'gpt-3',
+              'Here are is the high level show concept for `{{showIdeaItem}}`, the characters `{{showCharactersItem}}`, the show bible `{{showBibleItem}}`, the season `{{seasonItem}}`, the episode `{{episodeItem}}`, and the episode script `{{episodeScriptItem}}`. Break the script down into scenes, and write out the shot list for each scene',
+            model: 'gpt-3.5-turbo-0125',
             type: 'aiPrompt',
-            schema: z.array({
-              sceneNumber: z.number({}),
-              sceneShotList: z.string({}),
-            }),
+            schema: zodToString(() =>
+              z.array(
+                z.object({
+                  sceneNumber: z.number({}),
+                  sceneShotList: z.string({}),
+                })
+              )
+            ),
             systemPrompt: 'You are a show creator writing out the episode scenes',
           },
         },
@@ -304,13 +338,14 @@ function example1() {
       {
         input: {
           id: 'defineTasks',
-          inputFeed: {},
+          dependencies: {},
+          outputType: 'infer',
           input: {
             prompt:
               "I want a mesh gradient swift react native expo plugin, what are the steps to accomplish this. Don't give me the code, just the steps",
-            model: 'gpt-3',
+            model: 'gpt-3.5-turbo-0125',
             type: 'aiPrompt',
-            schema: z.array(z.string({})),
+            schema: zodToString(() => z.array(z.string({}))),
             systemPrompt: 'You are a react native developer building a mesh gradient plugin',
           },
         },
@@ -322,7 +357,8 @@ function example1() {
       {
         input: {
           id: 'executeTasks',
-          inputFeed: {
+          outputType: 'infer',
+          dependencies: {
             defineTasksOutputItem: {
               type: 'reference',
               array: true,
@@ -331,10 +367,10 @@ function example1() {
           },
           input: {
             prompt:
-              'Here is a step in building a mesh gradient swift react native expo plugin: {{defineTasksOutputItem}}. Please write the code for this step',
-            model: 'gpt-3',
+              'Here is a step in building a mesh gradient swift react native expo plugin: `{{defineTasksOutputItem}}`. Please write the code for this step',
+            model: 'gpt-3.5-turbo-0125',
             type: 'aiPrompt',
-            schema: z.array(z.string({})),
+            schema: zodToString(() => z.array(z.string({}))),
             systemPrompt: 'You are a developer building a mesh gradient plugin',
           },
         },
@@ -367,35 +403,14 @@ type CellInputFeed = {
 
 type CellInput = {
   id: string; // overwritable
-  inputFeed: CellInputFeed;
-  input:
-    | {
-        content: string;
-        type: 'markdown';
-      }
-    | {
-        content: string;
-        type: 'code';
-        ouptputType: 'markdown' | 'image' | 'webpage' | 'table' | 'reactComponent';
-      }
-    | {
-        type: 'aiPrompt';
-        temperature?: number;
-        prompt: string;
-        model: string;
-        systemPrompt: string;
-        schema: z.ZodType;
-      }
-    | {
-        type: 'aiImagePrompt';
-        prompt: string;
-        model: string;
-      };
+  dependencies?: CellInputFeed;
+  outputType: 'infer' | 'markdown' | 'image' | 'webpage' | 'table' | 'reactComponent';
+  input: CellTypes;
 };
 type CellOutput = {
   id?: string; // overwritable
   processed: boolean;
-  output?: CellOutputTypes;
+  output?: CellTypes;
   error?: CellOutputError;
   outputMeta?: {
     type: 'aiPrompt';
@@ -408,7 +423,28 @@ type CellOutput = {
 type CellOutputError = {
   error: string;
 };
-type CellOutputTypes =
+type CellTypes =
+  | {
+      content: string;
+      type: 'markdown';
+    }
+  | {
+      content: string;
+      type: 'code';
+    }
+  | {
+      type: 'aiPrompt';
+      temperature?: number;
+      prompt: string;
+      model: string;
+      systemPrompt: string;
+      schema?: string;
+    }
+  | {
+      type: 'aiImagePrompt';
+      prompt: string;
+      model: string;
+    }
   | {
       type: 'markdown';
       content: string;
@@ -440,19 +476,25 @@ type CellOutputTypes =
 
 class NotebookKernal {
   private notebook?: Notebook;
-  async runCell(cellId: string) {
+  async runCell(cellId: string, force = false) {
     if (!this.notebook) {
       throw new Error('Notebook not loaded');
     }
-    for (const cellElement of this.notebook.cells) {
-      if (cellElement.input.id === cellId) {
-        const output = await this.runCellInput(cellElement.input, cellElement.output);
-        cellElement.output = output;
+
+    const cellElement = this.notebook.cells.find((x) => x.input.id === cellId);
+    if (!cellElement) {
+      throw new Error('Cell not found');
+    }
+    if (cellElement.input.id === cellId) {
+      if (cellElement.output.processed && !force) {
+        return;
       }
+      const output = await this.runCellInput(cellElement.input, cellElement.output);
+      cellElement.output = output;
     }
   }
 
-  runBook(notebook: Notebook) {}
+  // runBook(notebook: Notebook) {}
 
   loadBook(notebook: Notebook) {
     this.notebook = structuredClone(notebook);
@@ -473,18 +515,127 @@ class NotebookKernal {
   }
 
   private async runCellInput(input: CellInput, output: CellOutput): Promise<CellOutput> {
+    const dependencies: {[key: string]: CellTypes | CellTypes[] | undefined} = {};
+    const dependencyArrays: {[key: string]: boolean} = {};
+    if (input.dependencies) {
+      for (const dependencyKey in input.dependencies) {
+        const dependency = input.dependencies[dependencyKey];
+        switch (dependency.type) {
+          case 'reference': {
+            const cell = this.notebook?.cells.find(
+              (x) => x.input.id === dependency.cellId || x.output.id === dependency.cellId
+            );
+            if (!cell) {
+              throw new Error('Cell not found');
+            }
+
+            if (cell.input.id === dependency.cellId) {
+              const result = cellToArrayOrValue(cell.input.input);
+              if (!result) continue;
+              if (dependency.array) {
+                dependencyArrays[dependencyKey] = true;
+                if (result.type === 'array') {
+                  dependencies[dependencyKey] = result.values.map((x) => x);
+                } else {
+                  dependencies[dependencyKey] = [result.value];
+                }
+              } else {
+                dependencies[dependencyKey] = result.value;
+              }
+            } else {
+              if (!cell.output.processed) {
+                await this.runCell(cell.input.id);
+              }
+              const result = cellToArrayOrValue(cell.output.output);
+              if (!result) continue;
+              if (dependency.array) {
+                dependencyArrays[dependencyKey] = true;
+                if (result.type === 'array') {
+                  dependencies[dependencyKey] = result.values.map((x) => x);
+                } else {
+                  dependencies[dependencyKey] = [result.value];
+                }
+              } else {
+                dependencies[dependencyKey] = result.value;
+              }
+            }
+            break;
+          }
+          default:
+            throw unreachable(dependency.type);
+        }
+      }
+    }
+    if (Object.keys(dependencyArrays).length > 0) {
+      throw new Error('Not implemented');
+    }
+
     switch (input.input.type) {
+      case 'number':
+        return {
+          id: output.id ?? input.id + 'Output',
+          processed: true,
+          output: {
+            type: 'number',
+            value: input.input.value,
+          },
+        };
+      case 'image':
+        return {
+          id: output.id ?? input.id + 'Output',
+          processed: true,
+          output: {
+            type: 'image',
+            content: input.input.content,
+          },
+        };
+      case 'webpage':
+        return {
+          id: output.id ?? input.id + 'Output',
+          processed: true,
+          output: {
+            type: 'webpage',
+            content: input.input.content,
+          },
+        };
+      case 'table':
+        return {
+          id: output.id ?? input.id + 'Output',
+          processed: true,
+          output: {
+            type: 'table',
+            cells: input.input.cells,
+          },
+        };
+      case 'json':
+        return {
+          id: output.id ?? input.id + 'Output',
+          processed: true,
+          output: {
+            type: 'json',
+            value: input.input.value,
+          },
+        };
+      case 'jsonArray':
+        return {
+          id: output.id ?? input.id + 'Output',
+          processed: true,
+          output: {
+            type: 'jsonArray',
+            values: input.input.values,
+          },
+        };
       case 'markdown':
         return {
           id: output.id ?? input.id + 'Output',
           processed: true,
           output: {
             type: 'markdown',
-            content: input.input.content,
+            content: processWithDependencies(input.input.content, dependencies),
           },
         };
       case 'code': {
-        const result = await runCode(input.input.content);
+        const result = await runCode(processWithDependencies(input.input.content, dependencies));
         return {
           id: output.id ?? input.id + 'Output',
           processed: true,
@@ -492,7 +643,7 @@ class NotebookKernal {
         };
       }
       case 'aiPrompt': {
-        const result = await runAI(input.input);
+        const result = await runAI(input.input, dependencies);
         if ('error' in result) {
           return {
             id: output.id ?? input.id + 'Output',
@@ -517,9 +668,17 @@ class NotebookKernal {
       }
       case 'aiImagePrompt':
         throw new Error('Not implemented');
+
       default:
         throw unreachable(input.input);
     }
+  }
+
+  saveBook() {
+    if (!this.notebook) {
+      throw new Error('Notebook not loaded');
+    }
+    return JSON.stringify(structuredClone(this.notebook), null, 2);
   }
 }
 
@@ -527,7 +686,7 @@ async function runCode(content: string) {
   const result = new Function(content)();
   return result;
 }
-function inferOutput(result: any): CellOutputTypes {
+function inferOutput(result: any): CellTypes {
   if (typeof result === 'string') {
     return {
       type: 'markdown',
@@ -568,10 +727,13 @@ type AIInput = {
   temperature?: number;
   model: string;
   systemPrompt: string;
-  schema: ZodType<any>;
+  schema?: string;
 };
 
-async function runAI(input: AIInput): Promise<
+async function runAI(
+  input: AIInput,
+  dependencies: {[key: string]: any} = {}
+): Promise<
   | {
       result: any;
       tokensIn: number;
@@ -581,17 +743,25 @@ async function runAI(input: AIInput): Promise<
     }
   | CellOutputError
 > {
-  const client = new OpenAI({fetch: fetch, apiKey: import.meta.env.VITE_OPENAI_KEY});
-  const schema = input.schema ? zodToJsonSchema(input.schema) : undefined;
+  const client = new OpenAI({fetch: fetch, apiKey: import.meta.env.VITE_OPENAI_KEY, dangerouslyAllowBrowser: true});
+
+  let zodSchema = new Function('z', 'return ' + input.schema)(z) as ZodType<any>;
+
+  // if zodSchema is an array, wrap it in an object
+  const wasArray = 'typeName' in zodSchema._def && zodSchema._def.typeName === 'ZodArray';
+  zodSchema = wasArray ? z.object({items: zodSchema}) : zodSchema;
+
+  const schema = input.schema ? zodToJsonSchema(zodSchema) : undefined;
   let retry = 0;
   while (retry < 3) {
+    debugger;
     const result = await client.chat.completions.create({
       // stream: true,
       model: input.model,
       temperature: input.temperature,
       messages: [
-        {role: 'system' as const, content: input.systemPrompt},
-        {role: 'user' as const, content: input.prompt},
+        {role: 'system' as const, content: processWithDependencies(input.systemPrompt, dependencies)},
+        {role: 'user' as const, content: processWithDependencies(input.prompt, dependencies)},
       ],
       ...(schema
         ? {
@@ -628,8 +798,12 @@ async function runAI(input: AIInput): Promise<
     try {
       if (result.choices[0]?.message?.function_call?.arguments) {
         // console.log(JSON.stringify(result, null, 2));
+        let jsonResult = new Function('return ' + result.choices[0].message.function_call.arguments)();
+        if (wasArray) {
+          jsonResult = jsonResult.items;
+        }
         return {
-          result: new Function('return ' + result.choices[0].message.function_call.arguments)(),
+          result: jsonResult,
           tokensIn: tokensIn,
           tokensOut: tokensOut,
           costIn: costIn,
@@ -652,4 +826,141 @@ async function runAI(input: AIInput): Promise<
   return {
     error: 'Failed to generate',
   };
+}
+function processWithDependencies(content: string, dependencies: {[p: string]: CellTypes | CellTypes[] | undefined}) {
+  for (const key in dependencies) {
+    const dependency = dependencies[key];
+
+    const dependencyString = cellToString(dependency);
+
+    content = content.replace(`{{${key}}}`, dependencyString);
+  }
+  return content;
+}
+
+function cellToString(cell: CellTypes | CellTypes[] | undefined): string {
+  if (Array.isArray(cell)) {
+    return cell.map((x) => cellToString(x)).join('\n');
+  }
+  switch (cell?.type) {
+    case undefined:
+      return '';
+    case 'markdown':
+      return cell.content;
+    case 'json':
+      return cell.value;
+    case 'jsonArray':
+      return JSON.stringify(cell.values);
+    case 'number':
+      return cell.value.toString();
+    case 'image':
+      return `![image](${cell.content})`;
+    case 'webpage':
+      return `[webpage](${cell.content})`;
+    case 'table':
+      return `| ${cell.cells[0].join(' | ')} |\n| ${cell.cells[1].join(' | ')} |`;
+    case 'code':
+      return cell.content;
+    case 'aiPrompt':
+      return cell.prompt;
+    case 'aiImagePrompt':
+      return cell.prompt;
+    default:
+      throw unreachable(cell);
+  }
+}
+
+function cellToArrayOrValue(cell: CellTypes | undefined):
+  | {
+      type: 'array';
+      values: CellTypes[];
+      value: CellTypes;
+    }
+  | {
+      type: 'value';
+      value: CellTypes;
+    }
+  | undefined {
+  switch (cell?.type) {
+    case undefined:
+      return undefined;
+    case 'markdown':
+      // do stuff here to parse if its an arrya, like 1.2.3 or ```json
+      return {type: 'value', value: cell};
+    case 'json':
+      return {
+        type: 'value',
+        value: cell,
+      };
+    case 'jsonArray':
+      return {
+        type: 'array',
+        value: cell,
+        values: cell.values.map((x) => ({
+          type: 'json',
+          value: x,
+        })),
+      };
+    case 'number':
+      return {
+        type: 'value',
+        value: cell,
+      };
+    case 'image':
+      return {type: 'value', value: cell};
+    case 'webpage':
+      return {type: 'value', value: cell};
+    case 'table':
+      return {
+        type: 'array',
+        value: cell,
+        values: cell.cells.map((x) => ({
+          type: 'jsonArray',
+          values: x,
+        })),
+      };
+    case 'code':
+      return {type: 'value', value: cell};
+    case 'aiPrompt':
+      return {
+        type: 'value',
+        value: cell,
+      };
+    case 'aiImagePrompt':
+      return {
+        type: 'value',
+        value: cell,
+      };
+    default:
+      throw unreachable(cell);
+  }
+}
+
+function parseCell(cell: CellTypes | undefined): any {
+  switch (cell?.type) {
+    case undefined:
+      return undefined;
+    case 'markdown':
+      return cell.content;
+    case 'json':
+      return JSON.parse(cell.value);
+    case 'jsonArray':
+      return cell.values.map((x) => JSON.parse(x));
+    case 'number':
+      return cell.value;
+    case 'image':
+      return cell.content;
+    case 'webpage':
+      return cell.content;
+    case 'table':
+      return cell.cells;
+    case 'code':
+      return cell.content;
+    case 'aiPrompt':
+      return cell.prompt;
+    case 'aiImagePrompt':
+      return cell.prompt;
+    default:
+      throw unreachable(cell);
+  }
 }
