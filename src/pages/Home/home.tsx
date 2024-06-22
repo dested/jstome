@@ -1,5 +1,5 @@
 import Markdown from 'react-markdown';
-import React, {useEffect, useState} from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 import {ChevronDownIcon, ChevronRightIcon} from '@heroicons/react/24/solid';
 import {FC} from 'react';
 import {
@@ -12,42 +12,69 @@ import {
   runKernel,
   unreachable,
 } from '@/kernel.tsx';
-import Editor, {DiffEditor, useMonaco, loader} from '@monaco-editor/react';
+import Editor from '@monaco-editor/react';
+import {PencilIcon, PlayIcon} from '@heroicons/react/20/solid';
 
-export const Home: FC = () => {
+export const Home = () => {
   const [notebook, setNotebook] = useState<Notebook | undefined>();
+  const [editSchema, setEditSchema] = useState(false);
+
   useEffect(() => {
     const nb = localStorage.getItem('notebook') ? JSON.parse(localStorage.getItem('notebook')!) : example2();
     setNotebook(nb);
   }, []);
 
+  useEffect(() => {
+    if (notebook) {
+      localStorage.setItem('notebook', JSON.stringify(notebook));
+    }
+  }, [notebook]);
+
   return (
-    <>
-      <section>
+    <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
+      <div className="flex space-x-4 mb-6">
         <button
-          className="btn-primary btn"
+          className="btn btn-primary"
           onClick={async () => {
             if (notebook) await runKernel(notebook);
           }}
         >
+          <PlayIcon className="w-5 h-5 mr-2" />
           Run Kernel
         </button>
-        {notebook && <NotebookViewer notebook={notebook} />}
-      </section>
-    </>
+        <button className="btn btn-secondary" onClick={() => setEditSchema(!editSchema)}>
+          <PencilIcon className="w-5 h-5 mr-2" />
+          {editSchema ? 'Close Schema Editor' : 'Edit Schema'}
+        </button>
+      </div>
+
+      {editSchema && (
+        <div className="mb-6">
+          <Editor
+            options={{wordWrap: 'on'}}
+            height="50vh"
+            defaultLanguage="json"
+            defaultValue={JSON.stringify(notebook, null, 2)}
+            onChange={(e) => setNotebook(JSON.parse(e!))}
+            className="border border-gray-300 rounded-lg shadow-sm"
+          />
+        </div>
+      )}
+
+      {notebook && <NotebookViewer notebook={notebook} />}
+    </div>
   );
 };
 
-// Main NotebookViewer component
 const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
-  const outputMetaMap = notebook.cells.map((cell) => cell.output.outputMeta).filter((a) => !!a);
-  const outputMeta = outputMetaMap.reduce(
-    (acc, curr) => {
+  const outputMeta = notebook.cells.reduce(
+    (acc, cell) => {
+      const meta = cell.output.outputMeta || {tokensIn: 0, tokensOut: 0, costIn: 0, costOut: 0};
       return {
-        tokensIn: acc.tokensIn + curr.tokensIn,
-        tokensOut: acc.tokensOut + curr.tokensOut,
-        costIn: acc.costIn + curr.costIn,
-        costOut: acc.costOut + curr.costOut,
+        tokensIn: acc.tokensIn + meta.tokensIn,
+        tokensOut: acc.tokensOut + meta.tokensOut,
+        costIn: acc.costIn + meta.costIn,
+        costOut: acc.costOut + meta.costOut,
       };
     },
     {tokensIn: 0, tokensOut: 0, costIn: 0, costOut: 0}
@@ -55,6 +82,7 @@ const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
 
   const kernelRef = React.useRef<NotebookKernel | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     kernelRef.current = new NotebookKernel();
     kernelRef.current.loadBook(notebook);
@@ -62,17 +90,17 @@ const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
   }, [notebook]);
 
   return (
-    <div className="container mx-auto p-4 bg-base-100">
+    <div className="bg-white rounded-xl shadow-md p-6">
       {isLoaded && (
         <NotebookKernelContext.Provider value={kernelRef.current}>
           <NotebookHeader metadata={notebook.metadata} />
-          <div className="mt-2 text-sm text-base-content/70">
-            <p>Tokens In: {outputMeta.tokensIn}</p>
-            <p>Tokens Out: {outputMeta.tokensOut}</p>
-            <p>Cost In: ${outputMeta.costIn.toFixed(6)}</p>
-            <p>Cost Out: ${outputMeta.costOut.toFixed(6)}</p>
+          <div className="mt-4 text-sm text-gray-600 grid grid-cols-2 gap-2">
+            <p>Total Tokens In: {outputMeta.tokensIn}</p>
+            <p>Total Tokens Out: {outputMeta.tokensOut}</p>
+            <p>Total Cost In: ${outputMeta.costIn.toFixed(6)}</p>
+            <p>Total Cost Out: ${outputMeta.costOut.toFixed(6)}</p>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-6 mt-6">
             {notebook.cells.map((cell, index) => (
               <CellContainer key={index} cell={cell} />
             ))}
@@ -85,24 +113,29 @@ const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
 
 const NotebookKernelContext = React.createContext<NotebookKernel | null>(null);
 
-// NotebookHeader component
 const NotebookHeader = ({metadata}: {metadata: Notebook['metadata']}) => {
   return (
-    <div className="bg-primary text-primary-content p-4 rounded-lg mb-4">
-      <h1 className="text-2xl font-bold">{metadata.title}</h1>
+    <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-lg mb-6">
+      <h1 className="text-3xl font-bold">{metadata.title}</h1>
     </div>
   );
 };
 
-// CellContainer component
 const CellContainer = ({cell}: {cell: Notebook['cells'][number]}) => {
   const [isExpanded, setIsExpanded] = React.useState(true);
 
   return (
-    <div className="border border-base-300 rounded-lg shadow-sm">
-      <div className="flex items-center p-2 bg-base-200 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-        {isExpanded ? <ChevronDownIcon className="w-5 h-5 mr-2" /> : <ChevronRightIcon className="w-5 h-5 mr-2" />}
-        <span className="font-semibold">Cell {cell.input.id}</span>
+    <div className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div
+        className="flex items-center p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors duration-150"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        {isExpanded ? (
+          <ChevronDownIcon className="w-5 h-5 mr-2 text-gray-500" />
+        ) : (
+          <ChevronRightIcon className="w-5 h-5 mr-2 text-gray-500" />
+        )}
+        <span className="font-semibold text-gray-700">Cell {cell.input.id}</span>
       </div>
       {isExpanded && (
         <div className="p-4">
@@ -117,16 +150,16 @@ const CellContainer = ({cell}: {cell: Notebook['cells'][number]}) => {
 export const CellTypeComponent = ({cellType}: {cellType: CellTypes}) => {
   switch (cellType.type) {
     case 'number':
-      return <p>{cellType.value}</p>;
+      return <p className="text-lg font-semibold text-gray-700">{cellType.value}</p>;
     case 'image':
-      return <img src={cellType.content} alt="Input" className="max-w-full h-auto" />;
+      return <img src={cellType.content} alt="Input" className="max-w-full h-auto rounded-lg shadow-md" />;
     case 'webpage':
-      return <iframe src={cellType.content} className="w-full h-64 border-0" />;
+      return <iframe src={cellType.content} className="w-full h-64 border-0 rounded-lg shadow-md" />;
     case 'json':
       return <ObjectViewer object={cellType.value} />;
     case 'jsonArray':
       return (
-        <div className={'space-y-4'}>
+        <div className="space-y-4">
           {cellType.values.map((value, index) => (
             <ObjectViewer key={index} object={value} />
           ))}
@@ -134,65 +167,66 @@ export const CellTypeComponent = ({cellType}: {cellType: CellTypes}) => {
       );
     case 'table':
       return (
-        <table className="table table-zebra w-full">
-          <tbody>
-            {cellType.cells.map((row, rowIndex) => (
-              <tr key={rowIndex}>
-                {row.map((cell, cellIndex) => (
-                  <td key={cellIndex}>{cell}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="table-auto w-full">
+            <tbody>
+              {cellType.cells.map((row, rowIndex) => (
+                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex} className="border px-4 py-2">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       );
     case 'array':
       return (
-        <div className={'space-y-4'}>
+        <div className="space-y-4">
           {cellType.cells.map((value, index) => (
             <CellOutputComponent key={index} output={value} />
           ))}
         </div>
       );
     case 'markdown':
-      return <Markdown className={'prose max-h-[50vh] overflow-y-auto w-full'}>{cellType.content}</Markdown>;
+      return <Markdown className="prose max-w-none">{cellType.content}</Markdown>;
     case 'code':
       return (
-        <pre className="bg-base-200 p-2 rounded prose">
+        <pre className="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto">
           <code>{cellType.content}</code>
         </pre>
       );
     case 'aiPrompt':
       return (
-        <div>
-          <p>
-            <strong>Prompt:</strong> {cellType.prompt}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <p className="font-semibold mb-2">Prompt:</p>
+          <div className="prose max-w-none mb-4">{cellType.prompt}</div>
+          <p className="font-semibold mb-1">
+            Model: <span className="font-normal">{cellType.model}</span>
           </p>
-          <p>
-            <strong>Model:</strong> {cellType.model}
+          <p className="font-semibold mb-1">
+            Temperature: <span className="font-normal">{cellType.temperature || 'N/A'}</span>
           </p>
-          <p>
-            <strong>Temperature:</strong> {cellType.temperature || 'N/A'}
-          </p>
-          <p>
-            <strong>Schema:</strong> {cellType.schema || 'N/A'}
+          <p className="font-semibold">
+            Schema: <span className="font-normal">{cellType.schema || 'N/A'}</span>
           </p>
         </div>
       );
     case 'aiImagePrompt':
       return (
-        <div>
-          <p>
-            <strong>Image Prompt:</strong> {cellType.prompt}
-          </p>
-          <p>
-            <strong>Model:</strong> {cellType.model}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <p className="font-semibold mb-2">Image Prompt:</p>
+          <p className="mb-2">{cellType.prompt}</p>
+          <p className="font-semibold">
+            Model: <span className="font-normal">{cellType.model}</span>
           </p>
         </div>
       );
-
     default:
-      return <p>Unsupported input type: {cellType.type}</p>;
+      return <p className="text-red-500">Unsupported input type: {(cellType as any).type}</p>;
   }
 };
 
@@ -203,21 +237,17 @@ function CellTypeComponentEditable({
   cellType: CellTypes | undefined;
   onSave: (cellType: CellTypes) => void;
 }) {
-  function renderCellTypes() {
-    if (!cellType) return <></>;
+  const renderCellTypes = () => {
+    if (!cellType) return null;
+
     switch (cellType.type) {
       case 'number':
         return (
           <input
             type="number"
             value={cellType.value}
-            onChange={(e) =>
-              onSave({
-                type: 'number',
-                value: parseFloat(e.target.value),
-              })
-            }
-            className="input input-primary w-full"
+            onChange={(e) => onSave({type: 'number', value: parseFloat(e.target.value)})}
+            className="input input-bordered w-full"
           />
         );
       case 'image':
@@ -225,32 +255,17 @@ function CellTypeComponentEditable({
           <input
             type="text"
             value={cellType.content}
-            onChange={(e) =>
-              onSave({
-                type: 'image',
-                content: e.target.value,
-              })
-            }
-            className="input input-primary w-full"
+            onChange={(e) => onSave({type: 'image', content: e.target.value})}
+            className="input input-bordered w-full"
           />
         );
       case 'webpage':
-        return <>Not Supported</>;
+        return <p className="text-gray-500 italic">Not editable</p>;
       case 'json':
-        return (
-          <ObjectEditor
-            object={cellType.value}
-            onSave={(e) => {
-              onSave({
-                type: 'json',
-                value: e,
-              });
-            }}
-          />
-        );
+        return <ObjectEditor object={cellType.value} onSave={(e) => onSave({type: 'json', value: e})} />;
       case 'jsonArray':
         return (
-          <div className={'space-y-4'}>
+          <div className="space-y-4">
             {cellType.values.map((value, index) => (
               <ObjectEditor
                 key={index}
@@ -258,170 +273,101 @@ function CellTypeComponentEditable({
                 onSave={(e) => {
                   const newValues = [...cellType.values];
                   newValues[index] = e;
-                  onSave({
-                    type: 'jsonArray',
-                    values: newValues,
-                  });
+                  onSave({type: 'jsonArray', values: newValues});
                 }}
               />
             ))}
           </div>
         );
       case 'table':
-        return <>Not editable yet</>;
+        return <p className="text-gray-500 italic">Not editable yet</p>;
       case 'array':
         return (
-          <div className={'space-y-4'}>
-            {cellType.cells.map(
-              (value, index) =>
-                value.output && (
-                  <CellTypeComponentEditable
-                    key={index}
-                    cellType={value.output}
-                    onSave={(e) => {
-                      const newCells = [...cellType.cells];
-                      newCells[index] = {
-                        ...newCells[index],
-                        output: e,
-                      };
-                      onSave({
-                        type: 'array',
-                        cells: newCells,
-                      });
-                    }}
-                  />
-                )
+          <div className="space-y-4">
+            {cellType.cells.map((value, index) =>
+              value.output ? (
+                <CellTypeComponentEditable
+                  key={index}
+                  cellType={value.output}
+                  onSave={(e) => {
+                    const newCells = [...cellType.cells];
+                    newCells[index] = {...newCells[index], output: e};
+                    onSave({type: 'array', cells: newCells});
+                  }}
+                />
+              ) : null
             )}
           </div>
         );
       case 'markdown':
-        return (
-          <Editor
-            options={{
-              wordWrap: 'on',
-            }}
-            height="50vh"
-            defaultLanguage="markdown"
-            defaultValue={cellType.content}
-            onChange={(e) => {
-              onSave({
-                type: 'markdown',
-                content: e!,
-              });
-            }}
-          />
-        );
       case 'code':
         return (
           <Editor
-            options={{
-              wordWrap: 'on',
-            }}
+            options={{wordWrap: 'on'}}
             height="50vh"
-            defaultLanguage="javascript"
+            defaultLanguage={cellType.type === 'markdown' ? 'markdown' : 'javascript'}
             defaultValue={cellType.content}
-            onChange={(e) => {
-              onSave({
-                type: 'code',
-                content: e!,
-              });
-            }}
+            onChange={(e) => onSave({type: cellType.type, content: e || ''})}
+            className="border border-gray-300 rounded-lg"
           />
         );
       case 'aiPrompt':
         return (
-          <div>
-            <p>
-              <strong>Prompt:</strong>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prompt:</label>
               <Editor
-                options={{
-                  wordWrap: 'on',
-                }}
-                height="50vh"
+                options={{wordWrap: 'on'}}
+                height="20vh"
                 defaultLanguage="markdown"
                 defaultValue={cellType.prompt}
-                onChange={(e) => {
-                  onSave({
-                    type: 'aiPrompt',
-                    prompt: e!,
-                    schema: cellType.schema,
-                    systemPrompt: cellType.systemPrompt,
-                    model: cellType.model,
-                    temperature: cellType.temperature,
-                  });
-                }}
+                onChange={(e) => onSave({...cellType, prompt: e || ''})}
+                className="border border-gray-300 rounded-lg"
               />
-            </p>
-            <p>
-              <strong>Model:</strong>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Model:</label>
               <select
                 value={cellType.model}
-                onChange={(e) => {
-                  onSave({
-                    type: 'aiPrompt',
-                    prompt: cellType.prompt,
-                    schema: cellType.schema,
-                    systemPrompt: cellType.systemPrompt,
-                    model: e.target.value,
-                    temperature: cellType.temperature,
-                  });
-                }}
-                className="input input-primary w-full"
+                onChange={(e) => onSave({...cellType, model: e.target.value})}
+                className="select select-bordered w-full"
               >
                 <option value="gpt-3.5-turbo-0125">gpt-3.5-turbo-0125</option>
+                {/* Add more model options as needed */}
               </select>
-            </p>
-            <p>
-              <strong>Temperature:</strong>{' '}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Temperature:</label>
               <input
                 type="number"
                 value={cellType.temperature}
-                className="input input-primary w-full"
+                className="input input-bordered w-full"
                 step={0.1}
                 min={0}
                 max={2}
-                onChange={(e) => {
-                  onSave({
-                    type: 'aiPrompt',
-                    prompt: cellType.prompt,
-                    schema: cellType.schema,
-                    systemPrompt: cellType.systemPrompt,
-                    model: cellType.model,
-                    temperature: parseFloat(e.target.value),
-                  });
-                }}
+                onChange={(e) => onSave({...cellType, temperature: parseFloat(e.target.value)})}
               />
-            </p>
-            <p>
-              <strong>Schema:</strong>{' '}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Schema:</label>
               <input
-                type="string"
+                type="text"
                 value={cellType.schema}
-                className="input input-primary w-full"
-                onChange={(e) => {
-                  onSave({
-                    type: 'aiPrompt',
-                    prompt: cellType.prompt,
-                    schema: e.target.value,
-                    systemPrompt: cellType.systemPrompt,
-                    model: cellType.model,
-                    temperature: cellType.temperature,
-                  });
-                }}
+                className="input input-bordered w-full"
+                onChange={(e) => onSave({...cellType, schema: e.target.value})}
               />
-            </p>
+            </div>
           </div>
         );
       case 'aiImagePrompt':
-        return <div>Not editable yet</div>;
-
+        return <p className="text-gray-500 italic">Not editable yet</p>;
       default:
-        return <p>Unsupported input type: {cellType.type}</p>;
+        return <p className="text-red-500">Unsupported input type: {(cellType as any).type}</p>;
     }
-  }
+  };
 
   return (
-    <div>
+    <div className="space-y-4">
       <select
         value={cellType?.type}
         onChange={(e) => {
@@ -503,6 +449,7 @@ function CellTypeComponentEditable({
               return unreachable(newCellType);
           }
         }}
+        className="select select-bordered w-full"
       >
         <option value="number">Number</option>
         <option value="image">Image</option>
@@ -521,14 +468,90 @@ function CellTypeComponentEditable({
   );
 }
 
+function ObjectViewer({object}: {object: string}) {
+  const obj = JSON.parse(object);
+  return (
+    <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <tbody className="divide-y divide-gray-200">
+          {Object.entries(obj).map(([key, value], index) => (
+            <tr key={index}>
+              <td className="py-2 pr-4 font-medium text-gray-900">{key}</td>
+              <td className="py-2 pl-4 text-gray-500">{String(value)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ObjectEditor({object, onSave}: {object: string; onSave: (value: string) => void}) {
+  const obj = JSON.parse(object);
+  return (
+    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+      {Object.entries(obj).map(([key, value], index) => (
+        <div key={index} className="flex space-x-2">
+          <input
+            type="text"
+            value={key}
+            onChange={(e) => {
+              const newObj = {...obj};
+              delete newObj[key];
+              newObj[e.target.value] = value;
+              onSave(JSON.stringify(newObj));
+            }}
+            className="input input-bordered flex-1"
+          />
+          {typeof value === 'string' || typeof value === 'number' ? (
+            <input
+              type={typeof value === 'number' ? 'number' : 'text'}
+              value={value as string | number}
+              onChange={(e) => {
+                const newObj = {...obj};
+                newObj[key] = e.target.value;
+                onSave(JSON.stringify(newObj));
+              }}
+              className="input input-bordered flex-1"
+            />
+          ) : typeof value === 'object' ? (
+            <ObjectEditor
+              object={JSON.stringify(value)}
+              onSave={(e) => {
+                const newObj = {...obj};
+                newObj[key] = JSON.parse(e);
+                onSave(JSON.stringify(newObj));
+              }}
+            />
+          ) : (
+            <span className="text-red-500">Unsupported edit</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const CellInputComponent = ({input}: {input: CellInput}) => {
   const [editing, setEditing] = useState(false);
-
-  const kernel = React.useContext(NotebookKernelContext);
+  const kernel = useContext(NotebookKernelContext);
 
   return (
-    <div className="mb-4">
-      <h3 className="text-lg font-semibold mb-2">Input</h3>
+    <div className="mb-6">
+      <h3 className="text-lg font-semibold mb-3">Input</h3>
+      {input.dependencies && Object.keys(input.dependencies).length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <p className="font-semibold text-blue-700 mb-2">Dependencies:</p>
+          <ul className="list-disc list-inside space-y-1">
+            {Object.entries(input.dependencies).map(([dep, {cellId, forEach}], index) => (
+              <li key={index} className="text-blue-600">
+                <strong>{dep}:</strong> {cellId} ({forEach ? 'forEach' : 'single'})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!editing ? (
         <CellTypeComponent cellType={input.input} />
       ) : (
@@ -539,106 +562,26 @@ const CellInputComponent = ({input}: {input: CellInput}) => {
           }}
         />
       )}
-      <button onClick={() => setEditing(!editing)} className={'btn btn-primary mt-2'}>
-        <span className="mr-2">{editing ? 'Finish Editing' : 'Edit'}</span>
-        <ChevronRightIcon className="w-5 h-5" />
-      </button>
-
-      <button onClick={() => kernel?.runCell(input.id)} className={'btn btn-primary mt-2'}>
-        <span className="mr-2">{kernel?.cellHasOutput(input.id) ? 'Re-run Cell' : 'Run Cell'}</span>
-        <ChevronRightIcon className="w-5 h-5" />
-      </button>
+      <div className="mt-4 space-x-2">
+        <button onClick={() => setEditing(!editing)} className="btn btn-outline btn-primary">
+          <PencilIcon className="w-5 h-5 mr-2" />
+          {editing ? 'Finish Editing' : 'Edit'}
+        </button>
+        <button onClick={() => kernel?.runCell(input.id)} className="btn btn-primary">
+          <PlayIcon className="w-5 h-5 mr-2" />
+          {kernel?.cellHasOutput(input.id) ? 'Re-run Cell' : 'Run Cell'}
+        </button>
+      </div>
     </div>
   );
 };
 
-function ObjectViewer(props: {object: string}) {
-  const obj = JSON.parse(props.object);
-  return (
-    <div className="overflow-x-auto bg-gray-200 rounded-xl">
-      <table className="table table-zebra w-full">
-        <tbody>
-          {Object.keys(obj).map((key, index) => (
-            <tr key={index}>
-              <td>{key}</td>
-              <td>{obj[key]}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-function ObjectEditor(props: {object: string; onSave: (value: string) => void}) {
-  const obj = JSON.parse(props.object);
-  return (
-    <div className="overflow-x-auto bg-gray-200 rounded-xl">
-      <table className="table table-zebra w-full">
-        <tbody>
-          {Object.keys(obj).map((key, index) => (
-            <tr key={index}>
-              <td>
-                <input
-                  type="text"
-                  value={key}
-                  onChange={(e) => {
-                    const newObj = {...obj};
-                    delete newObj[key];
-                    newObj[e.target.value] = obj[key];
-                    props.onSave(JSON.stringify(newObj));
-                  }}
-                  className="input input-primary w-full"
-                />
-              </td>
-              <td>
-                {typeof obj[key] === 'string' ? (
-                  <input
-                    type="text"
-                    value={obj[key]}
-                    onChange={(e) => {
-                      const newObj = {...obj};
-                      newObj[key] = e.target.value;
-                      props.onSave(JSON.stringify(newObj));
-                    }}
-                    className="input input-primary w-full"
-                  />
-                ) : typeof obj[key] === 'number' ? (
-                  <input
-                    type="number"
-                    value={obj[key]}
-                    onChange={(e) => {
-                      const newObj = {...obj};
-                      newObj[key] = e.target.value;
-                      props.onSave(JSON.stringify(newObj));
-                    }}
-                    className="input input-primary w-full"
-                  />
-                ) : typeof obj[key] === 'object' ? (
-                  <ObjectEditor
-                    object={JSON.stringify(obj[key])}
-                    onSave={(e) => {
-                      const newObj = {...obj};
-                      newObj[key] = JSON.parse(e);
-                      props.onSave(JSON.stringify(newObj));
-                    }}
-                  />
-                ) : (
-                  <>Unsupported edit</>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// CellOutput component
 const CellOutputComponent = ({output}: {output: CellOutput}) => {
+  const [editing, setEditing] = useState(false);
+
   const renderOutput = () => {
     if (!output.processed) {
-      return <p className="text-warning">Output not processed yet</p>;
+      return <p className="text-yellow-500">Output not processed yet</p>;
     }
 
     if (output.error) {
@@ -646,30 +589,30 @@ const CellOutputComponent = ({output}: {output: CellOutput}) => {
     }
 
     if (!output.output) {
-      return <p className="text-info">No output available</p>;
+      return <p className="text-blue-500">No output available</p>;
     }
 
     return <CellTypeComponent cellType={output.output} />;
   };
 
-  const [editing, setEditing] = useState(false);
-
   return (
-    <div>
-      <h3 className="text-lg font-semibold mb-2">Output</h3>
-      {!editing ? (
-        renderOutput()
-      ) : (
-        <CellTypeComponentEditable
-          cellType={output.output}
-          onSave={(e) => {
-            output.output = e;
-          }}
-        />
-      )}
-      <button onClick={() => setEditing(!editing)} className={'btn btn-primary mt-2'}>
-        <span className="mr-2">{editing ? 'Finish Editing' : 'Edit'}</span>
-        <ChevronRightIcon className="w-5 h-5" />
+    <div className="mt-6">
+      <h3 className="text-lg font-semibold mb-3">Output</h3>
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        {!editing ? (
+          renderOutput()
+        ) : (
+          <CellTypeComponentEditable
+            cellType={output.output}
+            onSave={(e) => {
+              output.output = e;
+            }}
+          />
+        )}
+      </div>
+      <button onClick={() => setEditing(!editing)} className="btn btn-outline btn-secondary mt-4">
+        <PencilIcon className="w-5 h-5 mr-2" />
+        {editing ? 'Finish Editing' : 'Edit'}
       </button>
 
       {output.outputMeta && (

@@ -19,7 +19,6 @@ export async function runKernel(notebook: Notebook): Promise<Notebook> {
   await kernel.runCell('episodeScript');
   await kernel.runCell('episodeScenes');
   const result = kernel.saveBook();
-  localStorage.setItem('notebook', result);
   return JSON.parse(result);
 }
 
@@ -396,7 +395,7 @@ export type Notebook = {
   };
 };
 
-export type CellInputFeed = {
+export type CellDependencies = {
   [key: string]: {
     type: 'reference';
     forEach?: boolean;
@@ -406,7 +405,7 @@ export type CellInputFeed = {
 
 export type CellInput = {
   id: string; // overwritable
-  dependencies?: CellInputFeed;
+  dependencies?: CellDependencies;
   outputType: 'infer' | 'markdown' | 'image' | 'webpage' | 'table' | 'reactComponent';
   input: CellTypes;
 };
@@ -533,20 +532,12 @@ export class NotebookKernel {
       const dependencyCombinations: {
         [key: string]: CellTypes | undefined;
       }[] = [structuredClone(dependencies) as {[key: string]: CellTypes | undefined}];
+
       for (const dependencyArraysKey of safeKeys(dependencyArrays)) {
         const dep = dependencies[dependencyArraysKey];
         if (!Array.isArray(dep)) {
           throw new Error('Dependency is not an array');
         }
-        const newCombinations: typeof dependencyCombinations = [];
-        for (const dependency of dep) {
-          for (const combination of dependencyCombinations) {
-            const newCombination = structuredClone(combination);
-            newCombination[dependencyArraysKey] = dependency;
-            newCombinations.push(newCombination);
-          }
-        }
-        dependencyCombinations.push(...newCombinations);
       }
       const results: CellOutput[] = [];
       for (const combination of dependencyCombinations) {
