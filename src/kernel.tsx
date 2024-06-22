@@ -458,8 +458,8 @@ export type CellTypes =
       value: string;
     }
   | {
-      type: 'jsonArray';
-      values: string[];
+      type: 'array';
+      values: CellTypes[];
     }
   | {
       type: 'table';
@@ -469,21 +469,80 @@ export type CellTypes =
 export type CellDependencyValues = {[p: string]: CellTypes | undefined};
 export type CellDependencyArrayValues = {[p: string]: CellTypes[] | undefined};
 
+export function lookupInObject(obj: any, key: string): CellTypes | undefined {
+  const keys = key.split('.');
+  let current = obj;
+  for (const key of keys) {
+    if ('type' in current && current.type === 'json' && current.value && typeof current.value === 'string') {
+      current = JSON.parse(current.value);
+    }
+    if (key in current) {
+      current = current[key];
+    } else {
+      return undefined;
+    }
+  }
+  if (!current) {
+    return undefined;
+  }
+  if (current && typeof current === 'object' && 'type' in current) {
+    return current;
+  }
+  return inferOutput(current);
+}
+
 export function processWithDependencies(content: string, dependencies: CellDependencyValues | undefined) {
   if (!dependencies) {
     return content;
   }
-  for (const key in dependencies) {
-    const dependency = dependencies[key];
+  // find everything between {{ and }}
+  const regex = /{{(.*?)}}/g;
+  let match;
+  while ((match = regex.exec(content))) {
+    const key = match[1];
+    const dependency = lookupInObject(dependencies, key);
+    if (!dependency) {
+      continue;
+    }
     let dependencyString = '';
     if (Array.isArray(dependency)) {
       dependencyString = dependency.map((x) => cellToString(x)).join('\n');
     } else {
       dependencyString = cellToString(dependency);
     }
+
     content = content.replace(`{{${key}}}`, dependencyString);
   }
+
   return content;
+}
+
+async function batchPromiseAll<T, T2>(
+  count: number,
+  array: T[],
+  callback: (x: T) => Promise<T2>,
+  callbackFailed: (original: T, x: PromiseRejectedResult) => T2
+): Promise<T2[]> {
+  const results: T2[] = [];
+  for (let i = 0; i < array.length; i += count) {
+    const promises = [];
+    for (let j = 0; j < count; j++) {
+      if (i + j < array.length) {
+        promises.push(callback(array[i + j]));
+      }
+    }
+    const settledResults = await Promise.allSettled(promises);
+
+    for (let i1 = 0; i1 < settledResults.length; i1++) {
+      const r = settledResults[i1];
+      if (r.status === 'fulfilled') {
+        results.push(r.value);
+      } else {
+        results.push(callbackFailed(array[i + i1], r));
+      }
+    }
+  }
+  return results;
 }
 
 export class NotebookKernel {
@@ -550,7 +609,6 @@ export class NotebookKernel {
   }
 
   buildFieldsFromOutputReference(dependentCellId: string, cellId: string): {id: string}[] {
-    debugger;
     if (!this.notebook) {
       return [];
     }
@@ -608,7 +666,6 @@ export class NotebookKernel {
     if (!this.notebook) {
       throw new Error('Notebook not loaded');
     }
-    debugger;
     const cellElement = this.notebook.cells.find((x) => x.input.id === cellId);
     if (!cellElement) {
       throw new Error('Cell not found');
@@ -621,6 +678,36 @@ export class NotebookKernel {
       cellElement.outputDetails = outputDetails;
     }
     this.saveNotebook();
+  }
+
+  async rerunCellOutput(cellId: string, outputIndex: number, force = false) {
+    if (!this.notebook) {
+      throw new Error('Notebook not loaded');
+    }
+    const cellElement = this.notebook.cells.find((x) => x.input.id === cellId);
+    if (!cellElement) {
+      throw new Error('Cell not found');
+    }
+    if (cellElement.input.id === cellId) {
+      if (!cellElement.outputDetails || !cellElement.outputDetails.hasMultipleOutputs) {
+        return;
+      }
+      if (this.cellIsProcessed(cellElement) && !force) {
+        return;
+      }
+      cellElement.outputDetails.outputs[outputIndex].output = {
+        type: 'markdown',
+        content: 'Processing...',
+      };
+      this.saveNotebook();
+
+      const outputDetails = await this.runCellInput(cellElement.input, outputIndex);
+      if (outputDetails.hasMultipleOutputs) {
+        throw new Error('Output should not have multiple outputs');
+      }
+      cellElement.outputDetails.outputs[outputIndex] = outputDetails.output;
+      this.saveNotebook();
+    }
   }
 
   // runBook(notebook: Notebook) {}
@@ -643,18 +730,39 @@ export class NotebookKernel {
     }
   }
 
-  private async runCellInput(input: CellInput): Promise<NotebookCellOutputDetails> {
+  private async runCellInput(input: CellInput, onlyOutputIndex = -1): Promise<NotebookCellOutputDetails> {
     const dependencyCombinations = await this.fillDependencies(input.dependencies, true);
-    if (dependencyCombinations.length > 1) {
+    if (onlyOutputIndex === -1 && dependencyCombinations.length > 1) {
       return {
         hasMultipleOutputs: true,
-        outputs: await Promise.all(dependencyCombinations.map((x) => this.processCellInput(input, x))),
+        outputs: await batchPromiseAll(
+          3,
+          dependencyCombinations,
+          (x) => this.processCellInput(input, x),
+          (cell, error) => {
+            return {
+              id: input.id + 'Output',
+              processed: true,
+              error: {
+                error: error.reason,
+              },
+              outputReferences: {},
+            };
+          }
+        ),
       };
     } else {
-      return {
-        hasMultipleOutputs: false,
-        output: await this.processCellInput(input, dependencyCombinations[0]),
-      };
+      if (onlyOutputIndex !== -1) {
+        return {
+          hasMultipleOutputs: false,
+          output: await this.processCellInput(input, dependencyCombinations[onlyOutputIndex]),
+        };
+      } else {
+        return {
+          hasMultipleOutputs: false,
+          output: await this.processCellInput(input, dependencyCombinations[0]),
+        };
+      }
     }
   }
 
@@ -717,12 +825,12 @@ export class NotebookKernel {
           },
           outputReferences,
         };
-      case 'jsonArray':
+      case 'array':
         return {
           id: id,
           processed: true,
           output: {
-            type: 'jsonArray',
+            type: 'array',
             values: input.input.values,
           },
           outputReferences,
@@ -738,6 +846,7 @@ export class NotebookKernel {
           outputReferences,
         };
       case 'code': {
+        debugger;
         const result = await runCode(input.input.content, dependencies);
         return {
           id: id,
@@ -758,9 +867,7 @@ export class NotebookKernel {
           return {
             id: id,
             processed: true,
-            error: {
-              error: result.error,
-            },
+            error: result,
             outputReferences,
           };
         }
@@ -787,9 +894,7 @@ export class NotebookKernel {
           return {
             id: id,
             processed: true,
-            error: {
-              error: result.error,
-            },
+            error: result,
             outputReferences,
           };
         }
@@ -876,10 +981,16 @@ export class NotebookKernel {
                 throw new Error('Cell not processed');
               }
               if (cell.outputDetails.hasMultipleOutputs) {
-                const results = cell.outputDetails.outputs.map((o) => cellToArrayOrValue(o.output)).filter((a) => !!a);
+                const results = cell.outputDetails.outputs.map((o) => cellToArrayOrValue(o.output));
                 if (results.length === 0) continue;
                 if (dependency.forEach) {
-                  dependencyArrays[dependencyKey] = results.map((x) => x.value);
+                  dependencyArrays[dependencyKey] = results.map(
+                    (x) =>
+                      x?.value ?? {
+                        type: 'json',
+                        value: 'false',
+                      }
+                  );
                   foreachDetails = {
                     cellId: dependency.cellId,
                     dependencyKey: dependencyKey,
@@ -887,8 +998,14 @@ export class NotebookKernel {
                   };
                 } else {
                   dependencies[dependencyKey] = {
-                    type: 'jsonArray',
-                    values: results.map((x) => x.value),
+                    type: 'array',
+                    values: results.map(
+                      (x) =>
+                        x?.value ?? {
+                          type: 'json',
+                          value: 'false',
+                        }
+                    ),
                   };
                 }
               } else {
@@ -950,8 +1067,11 @@ export class NotebookKernel {
                 };
               } else {
                 dependencies[dependencyKey] = {
-                  type: 'jsonArray',
-                  values: cell.outputDetails.outputs.map((x) => x.outputReferences[dependency.field]), // not right
+                  type: 'array',
+                  values: cell.outputDetails.outputs.map((x) => ({
+                    type: 'markdown',
+                    content: x.outputReferences[dependency.field],
+                  })),
                 };
               }
             } else {
@@ -1007,12 +1127,8 @@ export class NotebookKernel {
         for (const dependenciesKey in foreachDetails.dependencies) {
           for (let i = 0; i < dependencyCombinations.length; i++) {
             const dependencyCombination = dependencyCombinations[i];
-            if (dependencyCombination[dependenciesKey]?.type === 'jsonArray') {
-              // this whole jsonarray thing is way wrong
-              dependencyCombination[dependenciesKey] = {
-                type: 'json',
-                value: dependencyCombination[dependenciesKey].values[i],
-              } as CellTypes;
+            if (dependencyCombination[dependenciesKey]?.type === 'array') {
+              dependencyCombination[dependenciesKey] = dependencyCombination[dependenciesKey].values[i];
             } else {
               throw new Error('Dependency not the correct type');
             }
@@ -1053,41 +1169,7 @@ async function runCode(content: string, dependencies: CellDependencyValues | und
       if (!dependency) {
         continue;
       }
-      switch (dependency.type) {
-        case 'number':
-          args.push({key: key, value: dependency.value});
-          break;
-        case 'markdown':
-          args.push({key: key, value: dependency.content});
-          break;
-        case 'code':
-          args.push({key: key, value: dependency.content});
-          break;
-        case 'aiPrompt':
-          args.push({key: key, value: dependency});
-          break;
-        case 'aiImagePrompt':
-          args.push({key: key, value: dependency});
-          break;
-        case 'image':
-          args.push({key: key, value: dependency.content});
-          break;
-        case 'webpage':
-          args.push({key: key, value: dependency.content});
-          break;
-        case 'json':
-          args.push({key: key, value: JSON.parse(dependency.value)});
-          break;
-        case 'jsonArray':
-          args.push({key: key, value: dependency.values.map((x) => JSON.parse(x))});
-          break;
-        case 'table':
-          args.push({key: key, value: dependency.cells});
-          break;
-        default:
-          args.push({key: key, value: dependency});
-          break;
-      }
+      args.push({key: key, value: parseCell(dependency)});
     }
   }
   const result = new Function(...args.map((x) => x.key), content + '\n\nreturn run;')(...args.map((x) => x.value));
@@ -1111,10 +1193,8 @@ function inferOutput(result: any): CellTypes {
   if (typeof result === 'object') {
     if (Array.isArray(result)) {
       return {
-        type: 'jsonArray',
-        values: result.map((x) => {
-          return JSON.stringify(x);
-        }),
+        type: 'array',
+        values: result.map((x) => inferOutput(x)),
       };
     }
     return {
@@ -1249,24 +1329,37 @@ async function runAIImage(input: {prompt: string; model: string}): Promise<
   | CellOutputError
 > {
   const client = new OpenAI({fetch: fetch, apiKey: import.meta.env.VITE_OPENAI_KEY, dangerouslyAllowBrowser: true});
+  try {
+    const result = await client.images.generate({
+      // stream: true,
+      model: input.model,
+      response_format: 'b64_json',
+      quality: 'standard',
+      size: '1024x1024',
+      n: 1,
+      prompt: input.prompt,
+    });
+    return {
+      result: result.data[0].b64_json ?? '',
+      tokensIn: 0,
+      tokensOut: 0,
+      costIn: 0,
+      costOut: 0,
+    };
+  } catch (ex) {
+    assertType<Error & {code: string}>(ex);
+    // is 429
+    if (ex.code === 'rate_limit_exceeded') {
+      return {
+        error: 'Rate limit exceeded',
+      };
+    }
 
-  const result = await client.images.generate({
-    // stream: true,
-    model: input.model,
-    response_format: 'b64_json',
-    quality: 'standard',
-    size: '1024x1024',
-    n: 1,
-    prompt: input.prompt,
-  });
-
-  return {
-    result: result.data[0].b64_json ?? '',
-    tokensIn: 0,
-    tokensOut: 0,
-    costIn: 0,
-    costOut: 0,
-  };
+    console.log(ex);
+    return {
+      error: 'Failed to generate ' + ex.toString(),
+    };
+  }
 }
 
 function evaluateDependencies(dependencies: CellDependencyValues) {
@@ -1286,7 +1379,7 @@ function cellToString(cell: CellTypes | undefined): string {
       return cell.content;
     case 'json':
       return cell.value;
-    case 'jsonArray':
+    case 'array':
       return JSON.stringify(cell.values);
     case 'number':
       return cell.value.toString();
@@ -1329,14 +1422,11 @@ function cellToArrayOrValue(cell: CellTypes | undefined):
         type: 'value',
         value: cell,
       };
-    case 'jsonArray':
+    case 'array':
       return {
         type: 'array',
         value: cell,
-        values: cell.values.map((x) => ({
-          type: 'json',
-          value: x,
-        })),
+        values: cell.values,
       };
     case 'number':
       return {
@@ -1352,8 +1442,11 @@ function cellToArrayOrValue(cell: CellTypes | undefined):
         type: 'array',
         value: cell,
         values: cell.cells.map((x) => ({
-          type: 'jsonArray',
-          values: x,
+          type: 'array',
+          values: x.map((y) => ({
+            type: 'markdown',
+            content: y,
+          })),
         })),
       };
     case 'code':
@@ -1381,8 +1474,8 @@ function parseCell(cell: CellTypes | undefined): any {
       return cell.content;
     case 'json':
       return JSON.parse(cell.value);
-    case 'jsonArray':
-      return cell.values.map((x) => JSON.parse(x));
+    case 'array':
+      return cell.values.map((x) => parseCell(x));
     case 'number':
       return cell.value;
     case 'image':
@@ -1406,7 +1499,7 @@ function safeKeys<T>(object: {[key: string]: T}) {
 }
 
 function unique<T>(array: T[], field: keyof T): T[] {
-  const seen = new Set<string>();
+  const seen = new Set<any>();
   return array.filter((item) => {
     const key = item[field];
     if (seen.has(key)) {
@@ -1415,4 +1508,7 @@ function unique<T>(array: T[], field: keyof T): T[] {
     seen.add(key);
     return true;
   });
+}
+function assertType<T>(x: any): asserts x is T {
+  return;
 }

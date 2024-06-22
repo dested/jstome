@@ -3,7 +3,7 @@ import {produce} from 'immer';
 import Markdown from 'react-markdown';
 import React, {useContext, useEffect, useState} from 'react';
 import {ChevronDownIcon, ChevronRightIcon} from '@heroicons/react/24/solid';
-import {FC} from 'react';
+import dino from '../../json/dino.json';
 import {
   CellDependencies,
   CellDependencyValues,
@@ -26,13 +26,19 @@ export const Home = () => {
   const [editSchema, setEditSchema] = useState(false);
 
   useEffect(() => {
-    const nb = localStorage.getItem('notebook') ? JSON.parse(localStorage.getItem('notebook')!) : example2();
-    setNotebook(nb);
+    // const nb = localStorage.getItem('notebook') ? JSON.parse(localStorage.getItem('notebook')!) : example2();
+    setNotebook(dino as Notebook);
   }, []);
 
   useEffect(() => {
     if (notebook) {
-      localStorage.setItem('notebook', JSON.stringify(notebook));
+      console.log('Saving notebook');
+      console.log(JSON.stringify(notebook, null, 2));
+      try {
+        localStorage.setItem('notebook', JSON.stringify(notebook));
+      } catch (e) {
+        console.error(e);
+      }
     }
   }, [notebook]);
 
@@ -182,7 +188,8 @@ const CellContainer = ({
   cell: Notebook['cells'][number];
   onSave: (value: NotebookCell | null) => void;
 }) => {
-  const [isExpanded, setIsExpanded] = React.useState(true);
+  const kernel = useContext(NotebookKernelContext);
+  const [isExpanded, setIsExpanded] = React.useState(false);
   const [showOutputs, setShowOutputs] = useState(true);
   return (
     <div className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -224,7 +231,18 @@ const CellContainer = ({
                 (cell.outputDetails.hasMultipleOutputs ? (
                   <div className="space-y-4">
                     {cell.outputDetails.outputs.map((output, index) => (
-                      <CellOutputComponent key={index} outputIndex={index} output={output} input={cell.input} />
+                      <>
+                        <CellOutputComponent key={index} outputIndex={index} output={output} input={cell.input} />
+                        <button
+                          onClick={async () => {
+                            await kernel?.rerunCellOutput(cell.input.id, index, true);
+                          }}
+                          className="btn btn-primary"
+                        >
+                          <PlayIcon className="w-5 h-5 mr-2" />
+                          Re-run output
+                        </button>
+                      </>
                     ))}
                   </div>
                 ) : (
@@ -249,7 +267,7 @@ export const CellTypeComponent = ({
 }) => {
   const kernel = useContext(NotebookKernelContext);
 
-  const [dependenciesValues, setDependenciesValues] = useState<CellDependencyValues | null>(null);
+  const [dependenciesValues, setDependenciesValues] = useState<CellDependencyValues | undefined>(undefined);
   useEffectAsync(async () => {
     if (!kernel) return;
     const result = await kernel.fillDependencies(dependencies, false);
@@ -273,11 +291,11 @@ export const CellTypeComponent = ({
       return <iframe src={cellType.content} className="w-full h-64 border-0 rounded-lg shadow-md" />;
     case 'json':
       return <ObjectViewer object={JSON.parse(cellType.value)} />;
-    case 'jsonArray':
+    case 'array':
       return (
-        <div className="space-y-4">
+        <div className="space-y-4 pl-4">
           {cellType.values.map((value, index) => (
-            <ObjectViewer key={index} object={JSON.parse(value)} />
+            <CellTypeComponent key={index} cellType={value} dependencies={dependencies} />
           ))}
         </div>
       );
@@ -290,7 +308,7 @@ export const CellTypeComponent = ({
                 <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                   {row.map((cell, cellIndex) => (
                     <td key={cellIndex} className="border px-4 py-2">
-                      {cell}
+                      {processWithDependencies(cell, dependenciesValues)}
                     </td>
                   ))}
                 </tr>
@@ -300,7 +318,11 @@ export const CellTypeComponent = ({
         </div>
       );
     case 'markdown':
-      return <Markdown className="prose max-w-none">{cellType.content}</Markdown>;
+      return (
+        <Markdown className="prose max-w-none">
+          {processWithDependencies(cellType.content, dependenciesValues)}
+        </Markdown>
+      );
     case 'code':
       return (
         <pre className="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto">
@@ -407,17 +429,17 @@ function CellTypeComponentEditable({
         return <p className="text-gray-500 italic">Not editable</p>;
       case 'json':
         return <ObjectEditor object={cellType.value} onSave={(e) => onSave({type: 'json', value: e})} />;
-      case 'jsonArray':
+      case 'array':
         return (
-          <div className="space-y-4">
+          <div className="space-y-4 pl-4">
             {cellType.values.map((value, index) => (
-              <ObjectEditor
+              <CellTypeComponentEditable
                 key={index}
-                object={value}
+                cellType={value}
                 onSave={(e) => {
                   const newValues = [...cellType.values];
                   newValues[index] = e;
-                  onSave({type: 'jsonArray', values: newValues});
+                  onSave({...cellType, values: newValues});
                 }}
               />
             ))}
@@ -458,6 +480,7 @@ function CellTypeComponentEditable({
                 onChange={(e) => onSave({...cellType, model: e.target.value})}
                 className="select select-bordered w-full"
               >
+                <option value="">none</option>
                 <option value="gpt-3.5-turbo-0125">gpt-3.5-turbo-0125</option>
                 {/* Add more model options as needed */}
               </select>
@@ -506,6 +529,7 @@ function CellTypeComponentEditable({
                 onChange={(e) => onSave({...cellType, model: e.target.value})}
                 className="select select-bordered w-full"
               >
+                <option value="">none</option>
                 <option value="dall-e-3">dall-e-3</option>
                 {/* Add more model options as needed */}
               </select>
@@ -549,10 +573,10 @@ function CellTypeComponentEditable({
                 value: '{}',
               });
               break;
-            case 'jsonArray':
+            case 'array':
               onSave({
-                type: 'jsonArray',
-                values: ['{}'],
+                type: 'array',
+                values: [],
               });
               break;
             case 'table':
@@ -568,7 +592,6 @@ function CellTypeComponentEditable({
               });
               break;
             case 'code':
-              debugger;
               onSave({
                 type: 'code',
                 content: `function run(){
@@ -603,7 +626,7 @@ function CellTypeComponentEditable({
         <option value="image">Image</option>
         <option value="webpage">Webpage</option>
         <option value="json">JSON</option>
-        <option value="jsonArray">JSON Array</option>
+        <option value="array">Array</option>
         <option value="table">Table</option>
         <option value="markdown">Markdown</option>
         <option value="code">Code</option>
@@ -616,28 +639,36 @@ function CellTypeComponentEditable({
 }
 
 function ObjectViewer({object}: {object: Record<string, any>}) {
+  const [viewAsJSON, setViewAsJSON] = useState(false);
   return (
     <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <tbody className="divide-y divide-gray-200">
-          {Object.entries(object).map(([key, value], index) => (
-            <tr key={index}>
-              <td className="py-2 pr-4 font-medium text-gray-900" width={'20%'}>
-                {key}
-              </td>
-              <td className="py-2 pl-4 text-gray-500">
-                {typeof value === 'object' ? (
-                  <ObjectViewer object={value} />
-                ) : typeof value === 'string' ? (
-                  <Markdown className={'prose'}>{String(value)}</Markdown>
-                ) : (
-                  String(value)
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <button onClick={() => setViewAsJSON(!viewAsJSON)} className="btn btn-outline btn-primary mb-4">
+        {viewAsJSON ? 'View As Table' : 'View As JSON'}
+      </button>
+      {viewAsJSON ? (
+        <pre>{JSON.stringify(object, null, 2)}</pre>
+      ) : (
+        <table className="min-w-full divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-200">
+            {Object.entries(object).map(([key, value], index) => (
+              <tr key={index}>
+                <td className="py-2 pr-4 font-medium text-gray-900" width={'20%'}>
+                  {key}
+                </td>
+                <td className="py-2 pl-4 text-gray-500">
+                  {typeof value === 'object' ? (
+                    <ObjectViewer object={value} />
+                  ) : typeof value === 'string' ? (
+                    <Markdown className={'prose'}>{String(value)}</Markdown>
+                  ) : (
+                    String(value)
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
@@ -868,7 +899,7 @@ const CellInputComponent = ({cellInput, onSave}: {cellInput: CellInput; onSave: 
         <button
           onClick={async () => {
             setProcessing(true);
-            await kernel?.runCell(cellInput.id, kernel?.cellHasOutput(cellInput.id));
+            await kernel?.runCell(cellInput.id, true);
             setProcessing(false);
           }}
           className="btn btn-primary"
