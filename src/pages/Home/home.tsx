@@ -61,7 +61,13 @@ export const Home = () => {
             height="50vh"
             defaultLanguage="json"
             defaultValue={JSON.stringify(notebook, null, 2)}
-            onChange={(e) => setNotebook(JSON.parse(e!))}
+            onChange={(e) => {
+              try {
+                setNotebook(JSON.parse(e!));
+              } catch (e) {
+                console.error(e);
+              }
+            }}
             className="border border-gray-300 rounded-lg shadow-sm"
           />
         </div>
@@ -128,9 +134,31 @@ const NotebookViewer = ({notebook, saveNotebook}: {notebook: Notebook; saveNoteb
           </div>
           <div className="space-y-6 mt-6">
             {notebook.cells.map((cell, index) => (
-              <CellContainer key={index} cell={cell} onSave={(e) => kernelRef.current?.updateCell(e)} />
+              <CellContainer
+                key={index}
+                cell={cell}
+                onSave={(e) => {
+                  if (!e) {
+                    kernelRef.current?.removeCell(cell.input.id);
+                  } else {
+                    kernelRef.current?.updateCell(e);
+                  }
+                }}
+              />
             ))}
           </div>
+          <button
+            onClick={async () => {
+              const name = prompt('Enter the name of the new cell');
+              if (name) {
+                kernelRef.current?.addCell(name);
+              }
+            }}
+            className="btn btn-primary mt-6"
+          >
+            <PencilIcon className="w-5 h-5 mr-2" />
+            Add Cell
+          </button>
         </NotebookKernelContext.Provider>
       )}
     </div>
@@ -147,9 +175,15 @@ const NotebookHeader = ({metadata}: {metadata: Notebook['metadata']}) => {
   );
 };
 
-const CellContainer = ({cell, onSave}: {cell: Notebook['cells'][number]; onSave: (value: NotebookCell) => void}) => {
+const CellContainer = ({
+  cell,
+  onSave,
+}: {
+  cell: Notebook['cells'][number];
+  onSave: (value: NotebookCell | null) => void;
+}) => {
   const [isExpanded, setIsExpanded] = React.useState(true);
-
+  const [showOutputs, setShowOutputs] = useState(true);
   return (
     <div className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div
@@ -162,26 +196,44 @@ const CellContainer = ({cell, onSave}: {cell: Notebook['cells'][number]; onSave:
           <ChevronRightIcon className="w-5 h-5 mr-2 text-gray-500" />
         )}
         <span className="font-semibold text-gray-700">Cell {cell.input.id}</span>
+        <button
+          onClick={() => {
+            onSave(null);
+          }}
+          className="btn btn-outline btn-primary  ml-auto bg-red-500 text-white"
+        >
+          Remove
+        </button>
       </div>
       {isExpanded && (
         <div className="p-4">
           <CellInputComponent
-            input={cell.input}
+            cellInput={cell.input}
             onSave={(e) => {
               cell.input = e;
               onSave(cell);
             }}
           />
-          {cell.outputDetails &&
-            (cell.outputDetails.hasMultipleOutputs ? (
-              <div className="space-y-4">
-                {cell.outputDetails.outputs.map((output, index) => (
-                  <CellOutputComponent key={index} outputIndex={index} output={output} input={cell.input} />
+          <button onClick={() => setShowOutputs(!showOutputs)} className="btn btn-outline btn-secondary mt-4">
+            <PencilIcon className="w-5 h-5 mr-2" />
+            {showOutputs ? 'Hide Outputs' : 'Show Outputs'}
+          </button>
+          {showOutputs ? (
+            <>
+              {cell.outputDetails &&
+                (cell.outputDetails.hasMultipleOutputs ? (
+                  <div className="space-y-4">
+                    {cell.outputDetails.outputs.map((output, index) => (
+                      <CellOutputComponent key={index} outputIndex={index} output={output} input={cell.input} />
+                    ))}
+                  </div>
+                ) : (
+                  <CellOutputComponent output={cell.outputDetails.output} input={cell.input} />
                 ))}
-              </div>
-            ) : (
-              <CellOutputComponent output={cell.outputDetails.output} input={cell.input} />
-            ))}
+            </>
+          ) : (
+            <div className="text-gray-500">Has outputs</div>
+          )}
         </div>
       )}
     </div>
@@ -203,20 +255,29 @@ export const CellTypeComponent = ({
     const result = await kernel.fillDependencies(dependencies, false);
     setDependenciesValues(result[0]);
   }, [dependencies, kernel, kernel?.notebook]);
+  const [showPrompt, setShowPrompt] = useState(true);
+
+  function getImageUrl(url: string) {
+    if (url.startsWith('http')) {
+      return url;
+    }
+    return `data:image/png;base64,${url}`;
+  }
+
   switch (cellType.type) {
     case 'number':
       return <p className="text-lg font-semibold text-gray-700">{cellType.value}</p>;
     case 'image':
-      return <img src={cellType.content} alt="Input" className="max-w-full h-auto rounded-lg shadow-md" />;
+      return <img src={getImageUrl(cellType.content)} alt="Input" className="max-w-full h-auto rounded-lg shadow-md" />;
     case 'webpage':
       return <iframe src={cellType.content} className="w-full h-64 border-0 rounded-lg shadow-md" />;
     case 'json':
-      return <ObjectViewer object={cellType.value} />;
+      return <ObjectViewer object={JSON.parse(cellType.value)} />;
     case 'jsonArray':
       return (
         <div className="space-y-4">
           {cellType.values.map((value, index) => (
-            <ObjectViewer key={index} object={value} />
+            <ObjectViewer key={index} object={JSON.parse(value)} />
           ))}
         </div>
       );
@@ -251,6 +312,7 @@ export const CellTypeComponent = ({
         <div className="bg-gray-50 p-4 rounded-lg">
           <p className="font-semibold mb-2">Raw Prompt:</p>
           <Markdown className="prose px-5 max-w-none mb-4">{cellType.prompt}</Markdown>
+
           <p className="font-semibold mb-1">
             Model: <span className="font-normal">{cellType.model}</span>
           </p>
@@ -262,11 +324,19 @@ export const CellTypeComponent = ({
           </p>
 
           {dependenciesValues && cellType.prompt.includes('{{') && (
-            <div className={' p-10'}>
+            <div
+              className={' p-10'}
+              onClick={() => {
+                setShowPrompt(!showPrompt);
+              }}
+            >
               <p className="font-semibold mb-2">Prompt:</p>
-              <Markdown className="prose max-w-none mb-4">
-                {processWithDependencies(cellType.prompt, dependenciesValues)}
-              </Markdown>
+
+              {showPrompt && (
+                <Markdown className="prose px-5 max-w-none mb-4">
+                  {processWithDependencies(cellType.prompt, dependenciesValues)}
+                </Markdown>
+              )}
             </div>
           )}
         </div>
@@ -275,10 +345,28 @@ export const CellTypeComponent = ({
       return (
         <div className="bg-gray-50 p-4 rounded-lg">
           <p className="font-semibold mb-2">Image Prompt:</p>
-          <p className="mb-2">{cellType.prompt}</p>
-          <p className="font-semibold">
-            Model: <span className="font-normal">{cellType.model}</span>
+          <Markdown className="prose px-5 max-w-none mb-4">{cellType.prompt}</Markdown>
+
+          <p className="font-semibold mb-1">
+            Image Model: <span className="font-normal">{cellType.model}</span>
           </p>
+
+          {dependenciesValues && cellType.prompt.includes('{{') && (
+            <div
+              className={' p-10'}
+              onClick={() => {
+                setShowPrompt(!showPrompt);
+              }}
+            >
+              <p className="font-semibold mb-2">Prompt:</p>
+
+              {showPrompt && (
+                <Markdown className="prose px-5 max-w-none mb-4">
+                  {processWithDependencies(cellType.prompt, dependenciesValues)}
+                </Markdown>
+              )}
+            </div>
+          )}
         </div>
       );
     default:
@@ -398,7 +486,32 @@ function CellTypeComponentEditable({
           </div>
         );
       case 'aiImagePrompt':
-        return <p className="text-gray-500 italic">Not editable yet</p>;
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Image Prompt:</label>
+              <Editor
+                options={{wordWrap: 'on'}}
+                height="20vh"
+                defaultLanguage="markdown"
+                defaultValue={cellType.prompt}
+                onChange={(e) => onSave({...cellType, prompt: e || ''})}
+                className="border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Model:</label>
+              <select
+                value={cellType.model}
+                onChange={(e) => onSave({...cellType, model: e.target.value})}
+                className="select select-bordered w-full"
+              >
+                <option value="dall-e-3">dall-e-3</option>
+                {/* Add more model options as needed */}
+              </select>
+            </div>
+          </div>
+        );
       default:
         return <p className="text-red-500">Unsupported input type: {(cellType as any).type}</p>;
     }
@@ -455,9 +568,12 @@ function CellTypeComponentEditable({
               });
               break;
             case 'code':
+              debugger;
               onSave({
                 type: 'code',
-                content: '',
+                content: `function run(){
+    return 0;
+}`,
               });
               break;
             case 'aiPrompt':
@@ -474,7 +590,7 @@ function CellTypeComponentEditable({
               onSave({
                 type: 'aiImagePrompt',
                 prompt: '',
-                model: '',
+                model: 'dall-e-3',
               });
               break;
             default:
@@ -499,17 +615,24 @@ function CellTypeComponentEditable({
   );
 }
 
-function ObjectViewer({object}: {object: string}) {
-  const obj = JSON.parse(object);
+function ObjectViewer({object}: {object: Record<string, any>}) {
   return (
     <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
         <tbody className="divide-y divide-gray-200">
-          {Object.entries(obj).map(([key, value], index) => (
+          {Object.entries(object).map(([key, value], index) => (
             <tr key={index}>
-              <td className="py-2 pr-4 font-medium text-gray-900">{key}</td>
+              <td className="py-2 pr-4 font-medium text-gray-900" width={'20%'}>
+                {key}
+              </td>
               <td className="py-2 pl-4 text-gray-500">
-                <Markdown className={'prose'}>{String(value)}</Markdown>
+                {typeof value === 'object' ? (
+                  <ObjectViewer object={value} />
+                ) : typeof value === 'string' ? (
+                  <Markdown className={'prose'}>{String(value)}</Markdown>
+                ) : (
+                  String(value)
+                )}
               </td>
             </tr>
           ))}
@@ -575,7 +698,7 @@ function ObjectEditor({object, onSave}: {object: string; onSave: (value: string)
   );
 }
 
-const CellInputComponent = ({input, onSave}: {input: CellInput; onSave: (value: CellInput) => void}) => {
+const CellInputComponent = ({cellInput, onSave}: {cellInput: CellInput; onSave: (value: CellInput) => void}) => {
   const [editing, setEditing] = useState(false);
   const kernel = useContext(NotebookKernelContext);
   const [editDependencies, setEditDependencies] = useState(false);
@@ -586,13 +709,14 @@ const CellInputComponent = ({input, onSave}: {input: CellInput; onSave: (value: 
 
       {!editDependencies ? (
         <>
-          {input.dependencies && Object.keys(input.dependencies).length > 0 && (
+          {cellInput.dependencies && Object.keys(cellInput.dependencies).length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="font-semibold text-blue-700 mb-2">Dependencies:</p>
               <ul className="list-disc list-inside space-y-1">
-                {Object.entries(input.dependencies).map(([dep, {cellId, forEach}], index) => (
+                {Object.entries(cellInput.dependencies).map(([dependencyKey, dependency], index) => (
                   <li key={index} className="text-blue-600">
-                    <strong>{dep}:</strong> {cellId} ({forEach ? 'forEach' : 'single'})
+                    <strong>{dependencyKey}:</strong> {dependency.cellId} ({dependency.forEach ? 'ForEach' : 'Single'})
+                    ({dependency.type}) {'field' in dependency && `(${dependency.field})`}
                   </li>
                 ))}
               </ul>
@@ -602,10 +726,119 @@ const CellInputComponent = ({input, onSave}: {input: CellInput; onSave: (value: 
       ) : (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
           <p className="font-semibold text-blue-700 mb-2">Dependencies:</p>
-          <ObjectEditor
-            object={JSON.stringify(input.dependencies)}
-            onSave={(e) => (input.dependencies = JSON.parse(e))}
-          />
+
+          <div className="space-y-2">
+            {cellInput.dependencies &&
+              Object.entries(cellInput.dependencies).map(([depKey, dependency], index) => (
+                <div key={index} className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={depKey}
+                    onChange={(e) => {
+                      const newDeps = {...cellInput.dependencies};
+                      delete newDeps[depKey];
+                      newDeps[e.target.value] = {
+                        ...dependency,
+                        cellId: dependency.cellId,
+                      };
+                      onSave({...cellInput, dependencies: newDeps});
+                    }}
+                    className="input input-bordered flex-1"
+                  />
+                  <select
+                    value={dependency.type}
+                    onChange={(e) => {
+                      const newDeps = {...cellInput.dependencies};
+                      switch (e.target.value) {
+                        case 'cellReference':
+                          newDeps[depKey] = {...dependency, type: 'cellReference'};
+                          break;
+                        case 'outputReference':
+                          newDeps[depKey] = {
+                            type: 'outputReference',
+                            field: '',
+                            cellId: dependency.cellId,
+                            forEach: dependency.forEach,
+                          };
+                          break;
+                        default:
+                          break;
+                      }
+                      onSave({...cellInput, dependencies: newDeps});
+                    }}
+                    className="select select-bordered flex-1"
+                  >
+                    <option value="cellReference">Cell Reference</option>
+                    <option value="outputReference">Output Reference</option>
+                  </select>
+                  <select
+                    value={dependency.cellId}
+                    onChange={(e) => {
+                      const newDeps = {...cellInput.dependencies};
+                      newDeps[depKey] = {...dependency, cellId: e.target.value};
+                      onSave({...cellInput, dependencies: newDeps});
+                    }}
+                    className="select select-bordered flex-1"
+                  >
+                    {kernel?.buildReferencesAbove(dependency.type, cellInput.id).map((cell) => {
+                      return <option value={cell.id}>{cell.id}</option>;
+                    })}
+                  </select>
+                  {dependency.type === 'outputReference' && (
+                    <select
+                      value={dependency.field}
+                      onChange={(e) => {
+                        const newDeps = {...cellInput.dependencies};
+                        newDeps[depKey] = {...dependency, field: e.target.value};
+                        onSave({...cellInput, dependencies: newDeps});
+                      }}
+                      className="select select-bordered flex-1"
+                    >
+                      {kernel?.buildFieldsFromOutputReference(dependency.cellId, cellInput.id).map((cell) => {
+                        return <option value={cell.id}>{cell.id}</option>;
+                      })}
+                    </select>
+                  )}
+                  <label>ForEach</label>
+                  <input
+                    type={'checkbox'}
+                    checked={dependency.forEach}
+                    onChange={(e) => {
+                      const newDeps = {...cellInput.dependencies};
+                      newDeps[depKey] = {...dependency, forEach: e.target.checked};
+                      onSave({...cellInput, dependencies: newDeps});
+                    }}
+                    className="checkbox checkbox-primary"
+                  ></input>
+                  <button
+                    onClick={() => {
+                      const newDeps = {...cellInput.dependencies};
+                      delete newDeps[depKey];
+                      onSave({...cellInput, dependencies: newDeps});
+                    }}
+                    className="btn btn-outline btn-primary bg-red-500 text-white"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            <button
+              onClick={() => {
+                const newDeps = {...cellInput.dependencies};
+                let key = 'newDependency';
+
+                while (newDeps[key]) {
+                  key = key + '1';
+                }
+
+                newDeps[key] = {cellId: '', forEach: false, type: 'cellReference'};
+                onSave({...cellInput, dependencies: newDeps});
+              }}
+              className="btn btn-outline btn-primary"
+            >
+              Add Dependency
+            </button>
+          </div>
         </div>
       )}
 
@@ -615,15 +848,17 @@ const CellInputComponent = ({input, onSave}: {input: CellInput; onSave: (value: 
       </button>
 
       {!editing ? (
-        <CellTypeComponent cellType={input.input} dependencies={input.dependencies} />
+        <CellTypeComponent cellType={cellInput.input} dependencies={cellInput.dependencies} />
       ) : (
-        <CellTypeComponentEditable
-          cellType={input.input}
-          onSave={(e) => {
-            input.input = e;
-            onSave(input);
-          }}
-        />
+        <div>
+          <CellTypeComponentEditable
+            cellType={cellInput.input}
+            onSave={(e) => {
+              cellInput.input = e;
+              onSave(cellInput);
+            }}
+          />
+        </div>
       )}
       <div className="mt-4 space-x-2">
         <button onClick={() => setEditing(!editing)} className="btn btn-outline btn-primary">
@@ -633,13 +868,13 @@ const CellInputComponent = ({input, onSave}: {input: CellInput; onSave: (value: 
         <button
           onClick={async () => {
             setProcessing(true);
-            await kernel?.runCell(input.id, kernel?.cellHasOutput(input.id));
+            await kernel?.runCell(cellInput.id, kernel?.cellHasOutput(cellInput.id));
             setProcessing(false);
           }}
           className="btn btn-primary"
         >
           <PlayIcon className="w-5 h-5 mr-2" />
-          {kernel?.cellHasOutput(input.id) ? 'Re-run Cell' : 'Run Cell'}
+          {kernel?.cellHasOutput(cellInput.id) ? 'Re-run Cell' : 'Run Cell'}
         </button>
         {processing && <p className="text-yellow-500">Processing...</p>}
       </div>

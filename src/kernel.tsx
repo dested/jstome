@@ -267,11 +267,42 @@ ai will:
               z.array(
                 z.object({
                   sceneNumber: z.number({}),
-                  sceneShotList: z.string({}),
+                  sceneShotList: z.array(z.string({})),
                 })
               )
             ),
             systemPrompt: 'You are a show creator writing out the episode scenes',
+          },
+        },
+      },
+      {
+        input: {
+          id: 'episodeScenesList',
+          outputType: 'infer',
+          dependencies: {
+            episodeScenes: {
+              type: 'cellReference',
+              cellId: 'episodeScenesOutput',
+              forEach: true,
+            },
+          },
+          input: {
+            type: 'code',
+            content: `
+function run(){
+  const results=[];
+  for (const scene of episodeScenes) {
+    for (let i = 0; i < scene.sceneShotList.length; i++) {
+      const shot = scene.sceneShotList[i];
+      results.push({
+        sceneNumber: scene.sceneNumber,
+        shotNumber: i,
+        shot: shot,
+      })
+    }
+  }
+  return results;
+}`,
           },
         },
       },
@@ -459,7 +490,25 @@ export class NotebookKernel {
   onSave: (e: Notebook) => void = () => {
     return;
   };
-
+  addCell(name: string) {
+    if (!this.notebook) {
+      throw new Error('Notebook not loaded');
+    }
+    if (this.notebook.cells.find((x) => x.input.id === name)) {
+      throw new Error('Cell already exists');
+    }
+    this.notebook.cells.push({
+      input: {
+        id: name,
+        outputType: 'infer',
+        input: {
+          content: '',
+          type: 'markdown',
+        },
+      },
+    });
+    this.saveNotebook();
+  }
   updateCell(cell: NotebookCell) {
     if (!this.notebook) {
       throw new Error('Notebook not loaded');
@@ -471,13 +520,84 @@ export class NotebookKernel {
     this.notebook.cells[index] = cell;
     this.saveNotebook();
   }
-  cellHasOutput(cellId: string) {
+  buildReferencesAbove(type: 'cellReference' | 'outputReference', cellId: string): {id: string}[] {
     if (!this.notebook) {
-      throw new Error('Notebook not loaded');
+      return [];
     }
     const cell = this.notebook.cells.find((x) => x.input.id === cellId);
     if (!cell) {
-      throw new Error('Cell not found');
+      return [];
+    }
+    const index = this.notebook.cells.findIndex((x) => x.input.id === cellId);
+    if (index === -1) {
+      return [];
+    }
+    const references: {id: string}[] = [];
+    if (type === 'cellReference') {
+      for (let i = 0; i < index; i++) {
+        references.push({id: this.notebook.cells[i].input.id});
+        references.push({id: this.notebook.cells[i].input.id + 'Output'});
+      }
+    } else {
+      for (let i = 0; i < index; i++) {
+        const outputDetails = this.notebook.cells[i].outputDetails;
+        if (outputDetails) {
+          references.push({id: this.notebook.cells[i].input.id + 'Output'});
+        }
+      }
+    }
+    return unique(references, 'id');
+  }
+
+  buildFieldsFromOutputReference(dependentCellId: string, cellId: string): {id: string}[] {
+    debugger;
+    if (!this.notebook) {
+      return [];
+    }
+    const cell = this.notebook.cells.find((x) => x.input.id === cellId || x.input.id + 'Output' === cellId);
+    if (!cell) {
+      return [];
+    }
+    const dependentCell = this.notebook.cells.find(
+      (x) => x.input.id === dependentCellId || x.input.id + 'Output' === dependentCellId
+    );
+    if (!dependentCell) {
+      return [];
+    }
+    if (!dependentCell.outputDetails) {
+      return [];
+    }
+
+    const references: {id: string}[] = [];
+
+    if (dependentCell.outputDetails.hasMultipleOutputs) {
+      for (const output of dependentCell.outputDetails.outputs) {
+        for (const outputReferencesKey in output.outputReferences) {
+          references.push({id: outputReferencesKey});
+        }
+      }
+    } else {
+      for (const outputReferencesKey in dependentCell.outputDetails.output.outputReferences) {
+        references.push({id: outputReferencesKey});
+      }
+    }
+    return unique(references, 'id');
+  }
+
+  removeCell(cellId: string) {
+    if (!this.notebook) {
+      throw new Error('Notebook not loaded');
+    }
+    this.notebook.cells = this.notebook.cells.filter((x) => x.input.id !== cellId);
+    this.saveNotebook();
+  }
+  cellHasOutput(cellId: string) {
+    if (!this.notebook) {
+      return false;
+    }
+    const cell = this.notebook.cells.find((x) => x.input.id === cellId);
+    if (!cell) {
+      return false;
     }
     if (cell.outputDetails) {
       return true;
@@ -489,7 +609,6 @@ export class NotebookKernel {
       throw new Error('Notebook not loaded');
     }
     debugger;
-
     const cellElement = this.notebook.cells.find((x) => x.input.id === cellId);
     if (!cellElement) {
       throw new Error('Cell not found');
@@ -619,7 +738,7 @@ export class NotebookKernel {
           outputReferences,
         };
       case 'code': {
-        const result = await runCode(processWithDependencies(input.input.content, dependencies));
+        const result = await runCode(input.input.content, dependencies);
         return {
           id: id,
           processed: true,
@@ -628,7 +747,13 @@ export class NotebookKernel {
         };
       }
       case 'aiPrompt': {
-        const result = await runAI(input.input, dependencies);
+        const result = await runAI({
+          prompt: processWithDependencies(input.input.prompt, dependencies),
+          model: input.input.model,
+          temperature: input.input.temperature ?? 0,
+          systemPrompt: processWithDependencies(input.input.systemPrompt, dependencies),
+          schema: input.input.schema,
+        });
         if ('error' in result) {
           return {
             id: id,
@@ -653,8 +778,38 @@ export class NotebookKernel {
           outputReferences,
         };
       }
-      case 'aiImagePrompt':
-        throw new Error('Not implemented');
+      case 'aiImagePrompt': {
+        const result = await runAIImage({
+          prompt: processWithDependencies(input.input.prompt, dependencies),
+          model: input.input.model,
+        });
+        if ('error' in result) {
+          return {
+            id: id,
+            processed: true,
+            error: {
+              error: result.error,
+            },
+            outputReferences,
+          };
+        }
+        return {
+          id: id,
+          processed: true,
+          output: {
+            type: 'image',
+            content: result.result,
+          },
+          outputMeta: {
+            type: 'aiPrompt',
+            tokensIn: result.tokensIn,
+            tokensOut: result.tokensOut,
+            costIn: result.costIn,
+            costOut: result.costOut,
+          },
+          outputReferences,
+        };
+      }
 
       default:
         throw unreachable(input.input);
@@ -731,7 +886,10 @@ export class NotebookKernel {
                     dependencies: {},
                   };
                 } else {
-                  dependencyArrays[dependencyKey] = results.map((x) => x.value);
+                  dependencies[dependencyKey] = {
+                    type: 'jsonArray',
+                    values: results.map((x) => x.value),
+                  };
                 }
               } else {
                 const result = cellToArrayOrValue(cell.outputDetails.output?.output);
@@ -842,7 +1000,6 @@ export class NotebookKernel {
       }
 
       if (foreachDetails && Object.keys(foreachDetails.dependencies).length > 0) {
-        debugger;
         const dep = dependencyArrays[foreachDetails.dependencyKey];
         if (!dep) {
           throw new Error('Dependency not found');
@@ -888,9 +1045,54 @@ export class NotebookKernel {
   }
 }
 
-async function runCode(content: string) {
-  const result = new Function(content)();
-  return result;
+async function runCode(content: string, dependencies: CellDependencyValues | undefined) {
+  const args: {key: string; value: any}[] = [];
+  if (dependencies) {
+    for (const key in dependencies) {
+      const dependency = dependencies[key];
+      if (!dependency) {
+        continue;
+      }
+      switch (dependency.type) {
+        case 'number':
+          args.push({key: key, value: dependency.value});
+          break;
+        case 'markdown':
+          args.push({key: key, value: dependency.content});
+          break;
+        case 'code':
+          args.push({key: key, value: dependency.content});
+          break;
+        case 'aiPrompt':
+          args.push({key: key, value: dependency});
+          break;
+        case 'aiImagePrompt':
+          args.push({key: key, value: dependency});
+          break;
+        case 'image':
+          args.push({key: key, value: dependency.content});
+          break;
+        case 'webpage':
+          args.push({key: key, value: dependency.content});
+          break;
+        case 'json':
+          args.push({key: key, value: JSON.parse(dependency.value)});
+          break;
+        case 'jsonArray':
+          args.push({key: key, value: dependency.values.map((x) => JSON.parse(x))});
+          break;
+        case 'table':
+          args.push({key: key, value: dependency.cells});
+          break;
+        default:
+          args.push({key: key, value: dependency});
+          break;
+      }
+    }
+  }
+  const result = new Function(...args.map((x) => x.key), content + '\n\nreturn run;')(...args.map((x) => x.value));
+
+  return result();
 }
 function inferOutput(result: any): CellTypes {
   if (typeof result === 'string') {
@@ -936,10 +1138,13 @@ type AIInput = {
   schema?: string;
 };
 
-async function runAI(
-  input: AIInput,
-  dependencies: {[key: string]: any} = {}
-): Promise<
+async function runAI(input: {
+  prompt: string;
+  temperature: number;
+  model: string;
+  systemPrompt: string;
+  schema?: string;
+}): Promise<
   | {
       result: any;
       tokensIn: number;
@@ -954,20 +1159,19 @@ async function runAI(
   let zodSchema = new Function('z', 'return ' + input.schema)(z) as ZodType<any>;
 
   // if zodSchema is an array, wrap it in an object
-  const wasArray = zodSchema && 'typeName' in zodSchema._def && zodSchema._def.typeName === 'ZodArray';
+  const wasArray = input.schema && zodSchema && 'typeName' in zodSchema._def && zodSchema._def.typeName === 'ZodArray';
   zodSchema = wasArray ? z.object({items: zodSchema}) : zodSchema;
 
   const schema = input.schema ? zodToJsonSchema(zodSchema) : undefined;
   let retry = 0;
   while (retry < 3) {
-    debugger;
     const result = await client.chat.completions.create({
       // stream: true,
       model: input.model,
       temperature: input.temperature,
       messages: [
-        {role: 'system' as const, content: processWithDependencies(input.systemPrompt, dependencies)},
-        {role: 'user' as const, content: processWithDependencies(input.prompt, dependencies)},
+        {role: 'system' as const, content: input.systemPrompt},
+        {role: 'user' as const, content: input.prompt},
       ],
       ...(schema
         ? {
@@ -1031,6 +1235,37 @@ async function runAI(
   }
   return {
     error: 'Failed to generate',
+  };
+}
+
+async function runAIImage(input: {prompt: string; model: string}): Promise<
+  | {
+      result: string;
+      tokensIn: number;
+      tokensOut: number;
+      costIn: number;
+      costOut: number;
+    }
+  | CellOutputError
+> {
+  const client = new OpenAI({fetch: fetch, apiKey: import.meta.env.VITE_OPENAI_KEY, dangerouslyAllowBrowser: true});
+
+  const result = await client.images.generate({
+    // stream: true,
+    model: input.model,
+    response_format: 'b64_json',
+    quality: 'standard',
+    size: '1024x1024',
+    n: 1,
+    prompt: input.prompt,
+  });
+
+  return {
+    result: result.data[0].b64_json ?? '',
+    tokensIn: 0,
+    tokensOut: 0,
+    costIn: 0,
+    costOut: 0,
   };
 }
 
@@ -1168,4 +1403,16 @@ function parseCell(cell: CellTypes | undefined): any {
 }
 function safeKeys<T>(object: {[key: string]: T}) {
   return Object.keys(object) as (keyof typeof object)[];
+}
+
+function unique<T>(array: T[], field: keyof T): T[] {
+  const seen = new Set<string>();
+  return array.filter((item) => {
+    const key = item[field];
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
