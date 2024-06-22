@@ -2,28 +2,6 @@ import {zodToJsonSchema} from 'zod-to-json-schema';
 import OpenAI from 'openai';
 import {z, ZodType} from 'zod';
 
-export async function runKernel(notebook: Notebook): Promise<Notebook> {
-  const kernel = new NotebookKernel();
-
-  kernel.loadBook(notebook);
-  kernel.setCellInput(
-    'showIdea',
-    'I want a gritty crime drama that takes place in 1941 utah but in a universe where dinosaurs are mailmen'
-  );
-  /*
-  await kernel.runCell('showIdea');
-  await kernel.runCell('highLevelShowConcept');
-  await kernel.runCell('showCharacters');
-  await kernel.runCell('showBible');
-  await kernel.runCell('season');
-  await kernel.runCell('episode');
-  await kernel.runCell('episodeScript');
-  await kernel.runCell('episodeScenes');
-*/
-  const result = kernel.saveBook();
-  return JSON.parse(result);
-}
-
 function zodToString(param: () => any) {
   return param.toString().substring(param.toString().indexOf('()=>') + 4);
 }
@@ -269,15 +247,15 @@ ai will:
               type: 'cellReference',
               cellId: 'seasonOutput',
             },
+            episodeScriptItem: {
+              type: 'cellReference',
+              cellId: 'episodeScriptOutput',
+              forEach: true,
+            },
             episodeItem: {
               type: 'outputReference',
               cellId: 'episodeScriptOutput',
               field: 'episodeItem',
-            },
-            episodeScriptItem: {
-              type: 'cellReference',
-              forEach: true,
-              cellId: 'episodeScriptOutput',
             },
           },
           input: {
@@ -367,19 +345,20 @@ export type Notebook = {
   };
 };
 
+export type CellDependencyValue =
+  | {
+      type: 'cellReference';
+      forEach?: boolean;
+      cellId: string;
+    }
+  | {
+      type: 'outputReference';
+      forEach?: boolean;
+      cellId: string;
+      field: string;
+    };
 export type CellDependencies = {
-  [key: string]:
-    | {
-        type: 'cellReference';
-        forEach?: boolean;
-        cellId: string;
-      }
-    | {
-        type: 'outputReference';
-        forEach?: boolean;
-        cellId: string;
-        field: string;
-      };
+  [key: string]: CellDependencyValue;
 };
 
 export type CellInput = {
@@ -456,7 +435,42 @@ export type CellTypes =
       cells: string[][];
     };
 
+export type CellDependencyValues = {[p: string]: CellTypes | undefined};
+export type CellDependencyArrayValues = {[p: string]: CellTypes[] | undefined};
+
+export function processWithDependencies(content: string, dependencies: CellDependencyValues | undefined) {
+  if (!dependencies) {
+    return content;
+  }
+  for (const key in dependencies) {
+    const dependency = dependencies[key];
+    let dependencyString = '';
+    if (Array.isArray(dependency)) {
+      dependencyString = dependency.map((x) => cellToString(x)).join('\n');
+    } else {
+      dependencyString = cellToString(dependency);
+    }
+    content = content.replace(`{{${key}}}`, dependencyString);
+  }
+  return content;
+}
+
 export class NotebookKernel {
+  onSave: (e: Notebook) => void = () => {
+    return;
+  };
+
+  updateCell(cell: NotebookCell) {
+    if (!this.notebook) {
+      throw new Error('Notebook not loaded');
+    }
+    const index = this.notebook.cells.findIndex((x) => x.input.id === cell.input.id);
+    if (index === -1) {
+      throw new Error('Cell not found');
+    }
+    this.notebook.cells[index] = cell;
+    this.saveNotebook();
+  }
   cellHasOutput(cellId: string) {
     if (!this.notebook) {
       throw new Error('Notebook not loaded');
@@ -469,11 +483,12 @@ export class NotebookKernel {
       return true;
     }
   }
-  private notebook?: Notebook;
+  notebook?: Notebook;
   async runCell(cellId: string, force = false) {
     if (!this.notebook) {
       throw new Error('Notebook not loaded');
     }
+    debugger;
 
     const cellElement = this.notebook.cells.find((x) => x.input.id === cellId);
     if (!cellElement) {
@@ -483,9 +498,10 @@ export class NotebookKernel {
       if (this.cellIsProcessed(cellElement) && !force) {
         return;
       }
-      const outputDetails = await this.runCellInput(cellElement.input, cellElement.outputDetails);
+      const outputDetails = await this.runCellInput(cellElement.input);
       cellElement.outputDetails = outputDetails;
     }
+    this.saveNotebook();
   }
 
   // runBook(notebook: Notebook) {}
@@ -508,20 +524,9 @@ export class NotebookKernel {
     }
   }
 
-  private async runCellInput(input: CellInput, output?: NotebookCellOutputDetails): Promise<NotebookCellOutputDetails> {
-    const {dependencies, dependencyArrays} = await this.fillDependencies(input);
-    if (Object.keys(dependencyArrays).length > 0) {
-      const dependencyCombinations: {
-        [key: string]: CellTypes | undefined;
-      }[] = [structuredClone(dependencies) as {[key: string]: CellTypes | undefined}];
-
-      for (const dependencyArraysKey of safeKeys(dependencyArrays)) {
-        const dep = dependencies[dependencyArraysKey];
-        if (!Array.isArray(dep)) {
-          throw new Error('Dependency is not an array');
-        }
-      }
-
+  private async runCellInput(input: CellInput): Promise<NotebookCellOutputDetails> {
+    const dependencyCombinations = await this.fillDependencies(input.dependencies, true);
+    if (dependencyCombinations.length > 1) {
       return {
         hasMultipleOutputs: true,
         outputs: await Promise.all(dependencyCombinations.map((x) => this.processCellInput(input, x))),
@@ -529,7 +534,7 @@ export class NotebookKernel {
     } else {
       return {
         hasMultipleOutputs: false,
-        output: await this.processCellInput(input, dependencies as {[p: string]: CellTypes | undefined}),
+        output: await this.processCellInput(input, dependencyCombinations[0]),
       };
     }
   }
@@ -541,7 +546,6 @@ export class NotebookKernel {
     }
   ): Promise<CellOutput> {
     const id = input.id + 'Output';
-    debugger;
     const outputReferences = evaluateDependencies(dependencies);
     switch (input.input.type) {
       case 'number':
@@ -657,12 +661,22 @@ export class NotebookKernel {
     }
   }
 
-  private async fillDependencies(input: CellInput) {
-    const dependencies: {[key: string]: CellTypes | CellTypes[] | undefined} = {};
-    const dependencyArrays: {[key: string]: boolean} = {};
-    if (input.dependencies) {
-      for (const dependencyKey in input.dependencies) {
-        const dependency = input.dependencies[dependencyKey];
+  async fillDependencies(
+    inputDependencies: CellDependencies | undefined,
+    runProcess: boolean
+  ): Promise<CellDependencyValues[]> {
+    const dependencies: CellDependencyValues = {};
+    const dependencyArrays: CellDependencyArrayValues = {};
+    let foreachDetails:
+      | {
+          cellId: string;
+          dependencyKey: string;
+          dependencies: CellDependencies;
+        }
+      | undefined = undefined;
+    if (inputDependencies) {
+      for (const dependencyKey in inputDependencies) {
+        const dependency = inputDependencies[dependencyKey];
         switch (dependency.type) {
           case 'cellReference': {
             const cell = this.notebook?.cells.find(
@@ -671,23 +685,37 @@ export class NotebookKernel {
             if (!cell) {
               throw new Error('Cell not found');
             }
+            if (foreachDetails) {
+              if (foreachDetails.cellId !== dependency.cellId || !dependencyArrays[foreachDetails.dependencyKey]) {
+                throw new Error('Cannot have a dependency after a foreach dependency that does not depend on it');
+              }
+              foreachDetails.dependencies[dependencyKey] = dependency;
+            }
 
             if (cell.input.id === dependency.cellId) {
               const result = cellToArrayOrValue(cell.input.input);
               if (!result) continue;
               if (dependency.forEach) {
-                dependencyArrays[dependencyKey] = true;
                 if (result.type === 'array') {
-                  dependencies[dependencyKey] = result.values.map((x) => x);
+                  dependencyArrays[dependencyKey] = result.values.map((x) => x);
                 } else {
-                  dependencies[dependencyKey] = [result.value];
+                  dependencyArrays[dependencyKey] = [result.value];
                 }
+                foreachDetails = {
+                  cellId: dependency.cellId,
+                  dependencyKey: dependencyKey,
+                  dependencies: {},
+                };
               } else {
                 dependencies[dependencyKey] = result.value;
               }
             } else {
               if (!this.cellIsProcessed(cell)) {
-                await this.runCell(cell.input.id);
+                if (runProcess) {
+                  await this.runCell(cell.input.id);
+                } else {
+                  throw new Error('Cell not processed');
+                }
               }
               if (!cell.outputDetails) {
                 throw new Error('Cell not processed');
@@ -696,21 +724,29 @@ export class NotebookKernel {
                 const results = cell.outputDetails.outputs.map((o) => cellToArrayOrValue(o.output)).filter((a) => !!a);
                 if (results.length === 0) continue;
                 if (dependency.forEach) {
-                  dependencyArrays[dependencyKey] = true;
-                  dependencies[dependencyKey] = results.map((x) => x.value);
+                  dependencyArrays[dependencyKey] = results.map((x) => x.value);
+                  foreachDetails = {
+                    cellId: dependency.cellId,
+                    dependencyKey: dependencyKey,
+                    dependencies: {},
+                  };
                 } else {
-                  dependencies[dependencyKey] = results.map((x) => x.value);
+                  dependencyArrays[dependencyKey] = results.map((x) => x.value);
                 }
               } else {
                 const result = cellToArrayOrValue(cell.outputDetails.output?.output);
                 if (!result) continue;
                 if (dependency.forEach) {
-                  dependencyArrays[dependencyKey] = true;
                   if (result.type === 'array') {
-                    dependencies[dependencyKey] = result.values.map((x) => x);
+                    dependencyArrays[dependencyKey] = result.values.map((x) => x);
                   } else {
-                    dependencies[dependencyKey] = [result.value];
+                    dependencyArrays[dependencyKey] = [result.value];
                   }
+                  foreachDetails = {
+                    cellId: dependency.cellId,
+                    dependencyKey: dependencyKey,
+                    dependencies: {},
+                  };
                 } else {
                   dependencies[dependencyKey] = result.value;
                 }
@@ -726,21 +762,59 @@ export class NotebookKernel {
               throw new Error('Cell not found');
             }
             if (!this.cellIsProcessed(cell)) {
-              await this.runCell(cell.input.id);
+              if (runProcess) {
+                await this.runCell(cell.input.id);
+              } else {
+                throw new Error('Cell not processed');
+              }
             }
             if (!cell.outputDetails) {
               throw new Error('Cell not processed');
             }
+
+            if (foreachDetails) {
+              if (foreachDetails.cellId !== dependency.cellId || !dependencyArrays[foreachDetails.dependencyKey]) {
+                throw new Error('Cannot have a dependency after a foreach dependency that does not depend on it');
+              }
+              foreachDetails.dependencies[dependencyKey] = dependency;
+            }
+
             if (cell.outputDetails.hasMultipleOutputs) {
-              dependencies[dependencyKey] = {
-                type: 'jsonArray',
-                values: cell.outputDetails.outputs.map((x) => x.outputReferences[dependency.field]), // not right
-              };
+              if (dependency.forEach) {
+                dependencyArrays[dependencyKey] = cell.outputDetails.outputs.map((o) => ({
+                  type: 'markdown' as const,
+                  content: o.outputReferences[dependency.field],
+                }));
+                foreachDetails = {
+                  cellId: dependency.cellId,
+                  dependencyKey: dependencyKey,
+                  dependencies: {},
+                };
+              } else {
+                dependencies[dependencyKey] = {
+                  type: 'jsonArray',
+                  values: cell.outputDetails.outputs.map((x) => x.outputReferences[dependency.field]), // not right
+                };
+              }
             } else {
-              dependencies[dependencyKey] = {
-                type: 'markdown',
-                content: cell.outputDetails.output!.outputReferences[dependency.field], // not right
-              };
+              if (dependency.forEach) {
+                dependencyArrays[dependencyKey] = [
+                  {
+                    type: 'markdown',
+                    content: cell.outputDetails.output!.outputReferences[dependency.field],
+                  },
+                ];
+                foreachDetails = {
+                  cellId: dependency.cellId,
+                  dependencyKey: dependencyKey,
+                  dependencies: {},
+                };
+              } else {
+                dependencies[dependencyKey] = {
+                  type: 'markdown',
+                  content: cell.outputDetails.output!.outputReferences[dependency.field], // not right
+                };
+              }
             }
             break;
           }
@@ -749,14 +823,58 @@ export class NotebookKernel {
         }
       }
     }
-    return {dependencies, dependencyArrays};
+
+    if (Object.keys(dependencyArrays).length > 0) {
+      const dependencyCombinations: CellDependencyValues[] = [structuredClone(dependencies) as CellDependencyValues];
+
+      for (const dependencyArraysKey of safeKeys(dependencyArrays)) {
+        const dep = dependencyArrays[dependencyArraysKey];
+        const newCombinations: CellDependencyValues[] = [];
+        if (!dep) continue;
+        for (const value of dep) {
+          for (const combination of dependencyCombinations) {
+            const newCombination = structuredClone(combination);
+            newCombination[dependencyArraysKey] = value;
+            newCombinations.push(newCombination);
+          }
+        }
+        dependencyCombinations.splice(0, dependencyCombinations.length, ...newCombinations);
+      }
+
+      if (foreachDetails && Object.keys(foreachDetails.dependencies).length > 0) {
+        debugger;
+        const dep = dependencyArrays[foreachDetails.dependencyKey];
+        if (!dep) {
+          throw new Error('Dependency not found');
+        }
+        for (const dependenciesKey in foreachDetails.dependencies) {
+          for (let i = 0; i < dependencyCombinations.length; i++) {
+            const dependencyCombination = dependencyCombinations[i];
+            if (dependencyCombination[dependenciesKey]?.type === 'jsonArray') {
+              // this whole jsonarray thing is way wrong
+              dependencyCombination[dependenciesKey] = {
+                type: 'json',
+                value: dependencyCombination[dependenciesKey].values[i],
+              } as CellTypes;
+            } else {
+              throw new Error('Dependency not the correct type');
+            }
+          }
+        }
+      }
+
+      return dependencyCombinations;
+    } else {
+      return [dependencies];
+    }
   }
 
-  saveBook() {
+  saveNotebook() {
     if (!this.notebook) {
       throw new Error('Notebook not loaded');
     }
-    return JSON.stringify(structuredClone(this.notebook), null, 2);
+    this.notebook = structuredClone(this.notebook);
+    this.onSave(this.notebook);
   }
 
   private cellIsProcessed(cellElement: NotebookCell) {
@@ -915,18 +1033,8 @@ async function runAI(
     error: 'Failed to generate',
   };
 }
-function processWithDependencies(content: string, dependencies: {[p: string]: CellTypes | undefined}) {
-  for (const key in dependencies) {
-    const dependency = dependencies[key];
 
-    const dependencyString = cellToString(dependency);
-
-    content = content.replace(`{{${key}}}`, dependencyString);
-  }
-  return content;
-}
-
-function evaluateDependencies(dependencies: {[p: string]: CellTypes | undefined}) {
+function evaluateDependencies(dependencies: CellDependencyValues) {
   const evaluated: {[p: string]: any} = {};
   for (const key in dependencies) {
     const dependency = dependencies[key];

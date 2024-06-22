@@ -1,19 +1,25 @@
+import {create} from 'zustand';
+import {produce} from 'immer';
 import Markdown from 'react-markdown';
 import React, {useContext, useEffect, useState} from 'react';
 import {ChevronDownIcon, ChevronRightIcon} from '@heroicons/react/24/solid';
 import {FC} from 'react';
 import {
+  CellDependencies,
+  CellDependencyValues,
   CellInput,
   CellOutput,
   CellTypes,
   example2,
   Notebook,
+  NotebookCell,
   NotebookKernel,
-  runKernel,
+  processWithDependencies,
   unreachable,
 } from '@/kernel.tsx';
 import Editor from '@monaco-editor/react';
 import {PencilIcon, PlayIcon} from '@heroicons/react/20/solid';
+import clsx from 'clsx';
 
 export const Home = () => {
   const [notebook, setNotebook] = useState<Notebook | undefined>();
@@ -61,12 +67,12 @@ export const Home = () => {
         </div>
       )}
 
-      {notebook && <NotebookViewer notebook={notebook} />}
+      {notebook && <NotebookViewer notebook={notebook} saveNotebook={setNotebook} />}
     </div>
   );
 };
 
-const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
+const NotebookViewer = ({notebook, saveNotebook}: {notebook: Notebook; saveNotebook: (notebook: Notebook) => void}) => {
   const outputMeta = notebook.cells.reduce(
     (acc, cell) => {
       if (!cell.outputDetails) {
@@ -103,6 +109,9 @@ const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
   useEffect(() => {
     kernelRef.current = new NotebookKernel();
     kernelRef.current.loadBook(notebook);
+    kernelRef.current.onSave = (e) => {
+      saveNotebook(e);
+    };
     setIsLoaded(true);
   }, [notebook]);
 
@@ -119,7 +128,7 @@ const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
           </div>
           <div className="space-y-6 mt-6">
             {notebook.cells.map((cell, index) => (
-              <CellContainer key={index} cell={cell} onSave={(e) => kernelRef.current?.updateCell(e.id, e)} />
+              <CellContainer key={index} cell={cell} onSave={(e) => kernelRef.current?.updateCell(e)} />
             ))}
           </div>
         </NotebookKernelContext.Provider>
@@ -127,8 +136,6 @@ const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
     </div>
   );
 };
-
-/*so you need to add that mobx thing for undo redo, you need to get dependeciy outputs working, and then maybet hats it lol*/
 
 const NotebookKernelContext = React.createContext<NotebookKernel | null>(null);
 
@@ -140,7 +147,7 @@ const NotebookHeader = ({metadata}: {metadata: Notebook['metadata']}) => {
   );
 };
 
-const CellContainer = ({cell, onSave}: {cell: Notebook['cells'][number]; onSave: (value: CellInput) => void}) => {
+const CellContainer = ({cell, onSave}: {cell: Notebook['cells'][number]; onSave: (value: NotebookCell) => void}) => {
   const [isExpanded, setIsExpanded] = React.useState(true);
 
   return (
@@ -162,18 +169,18 @@ const CellContainer = ({cell, onSave}: {cell: Notebook['cells'][number]; onSave:
             input={cell.input}
             onSave={(e) => {
               cell.input = e;
-              onSave(e);
+              onSave(cell);
             }}
           />
           {cell.outputDetails &&
             (cell.outputDetails.hasMultipleOutputs ? (
               <div className="space-y-4">
                 {cell.outputDetails.outputs.map((output, index) => (
-                  <CellOutputComponent key={index} output={output} />
+                  <CellOutputComponent key={index} outputIndex={index} output={output} input={cell.input} />
                 ))}
               </div>
             ) : (
-              <CellOutputComponent output={cell.outputDetails.output} />
+              <CellOutputComponent output={cell.outputDetails.output} input={cell.input} />
             ))}
         </div>
       )}
@@ -181,7 +188,21 @@ const CellContainer = ({cell, onSave}: {cell: Notebook['cells'][number]; onSave:
   );
 };
 
-export const CellTypeComponent = ({cellType}: {cellType: CellTypes}) => {
+export const CellTypeComponent = ({
+  cellType,
+  dependencies,
+}: {
+  cellType: CellTypes;
+  dependencies: CellDependencies | undefined;
+}) => {
+  const kernel = useContext(NotebookKernelContext);
+
+  const [dependenciesValues, setDependenciesValues] = useState<CellDependencyValues | null>(null);
+  useEffectAsync(async () => {
+    if (!kernel) return;
+    const result = await kernel.fillDependencies(dependencies, false);
+    setDependenciesValues(result[0]);
+  }, [dependencies, kernel, kernel?.notebook]);
   switch (cellType.type) {
     case 'number':
       return <p className="text-lg font-semibold text-gray-700">{cellType.value}</p>;
@@ -228,8 +249,8 @@ export const CellTypeComponent = ({cellType}: {cellType: CellTypes}) => {
     case 'aiPrompt':
       return (
         <div className="bg-gray-50 p-4 rounded-lg">
-          <p className="font-semibold mb-2">Prompt:</p>
-          <div className="prose max-w-none mb-4">{cellType.prompt}</div>
+          <p className="font-semibold mb-2">Raw Prompt:</p>
+          <Markdown className="prose px-5 max-w-none mb-4">{cellType.prompt}</Markdown>
           <p className="font-semibold mb-1">
             Model: <span className="font-normal">{cellType.model}</span>
           </p>
@@ -239,6 +260,15 @@ export const CellTypeComponent = ({cellType}: {cellType: CellTypes}) => {
           <p className="font-semibold">
             Schema: <span className="font-normal">{cellType.schema || 'N/A'}</span>
           </p>
+
+          {dependenciesValues && cellType.prompt.includes('{{') && (
+            <div className={' p-10'}>
+              <p className="font-semibold mb-2">Prompt:</p>
+              <Markdown className="prose max-w-none mb-4">
+                {processWithDependencies(cellType.prompt, dependenciesValues)}
+              </Markdown>
+            </div>
+          )}
         </div>
       );
     case 'aiImagePrompt':
@@ -478,7 +508,9 @@ function ObjectViewer({object}: {object: string}) {
           {Object.entries(obj).map(([key, value], index) => (
             <tr key={index}>
               <td className="py-2 pr-4 font-medium text-gray-900">{key}</td>
-              <td className="py-2 pl-4 text-gray-500">{String(value)}</td>
+              <td className="py-2 pl-4 text-gray-500">
+                <Markdown className={'prose'}>{String(value)}</Markdown>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -529,6 +561,16 @@ function ObjectEditor({object, onSave}: {object: string; onSave: (value: string)
           )}
         </div>
       ))}
+      <button
+        onClick={() => {
+          const newObj = {...obj};
+          newObj[''] = '';
+          onSave(JSON.stringify(newObj));
+        }}
+        className="btn btn-outline btn-primary"
+      >
+        Add Field
+      </button>
     </div>
   );
 }
@@ -536,25 +578,44 @@ function ObjectEditor({object, onSave}: {object: string; onSave: (value: string)
 const CellInputComponent = ({input, onSave}: {input: CellInput; onSave: (value: CellInput) => void}) => {
   const [editing, setEditing] = useState(false);
   const kernel = useContext(NotebookKernelContext);
-
+  const [editDependencies, setEditDependencies] = useState(false);
+  const [processing, setProcessing] = useState(false);
   return (
-    <div className="mb-6">
+    <div className={clsx('mb-6 p-4', processing && 'bg-yellow-200/50')}>
       <h3 className="text-lg font-semibold mb-3">Input</h3>
-      {input.dependencies && Object.keys(input.dependencies).length > 0 && (
+
+      {!editDependencies ? (
+        <>
+          {input.dependencies && Object.keys(input.dependencies).length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="font-semibold text-blue-700 mb-2">Dependencies:</p>
+              <ul className="list-disc list-inside space-y-1">
+                {Object.entries(input.dependencies).map(([dep, {cellId, forEach}], index) => (
+                  <li key={index} className="text-blue-600">
+                    <strong>{dep}:</strong> {cellId} ({forEach ? 'forEach' : 'single'})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      ) : (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
           <p className="font-semibold text-blue-700 mb-2">Dependencies:</p>
-          <ul className="list-disc list-inside space-y-1">
-            {Object.entries(input.dependencies).map(([dep, {cellId, forEach}], index) => (
-              <li key={index} className="text-blue-600">
-                <strong>{dep}:</strong> {cellId} ({forEach ? 'forEach' : 'single'})
-              </li>
-            ))}
-          </ul>
+          <ObjectEditor
+            object={JSON.stringify(input.dependencies)}
+            onSave={(e) => (input.dependencies = JSON.parse(e))}
+          />
         </div>
       )}
 
+      <button onClick={() => setEditDependencies(!editDependencies)} className="btn btn-outline btn-primary mb-4">
+        <PencilIcon className="w-5 h-5 mr-2" />
+        Edit Dependencies
+      </button>
+
       {!editing ? (
-        <CellTypeComponent cellType={input.input} />
+        <CellTypeComponent cellType={input.input} dependencies={input.dependencies} />
       ) : (
         <CellTypeComponentEditable
           cellType={input.input}
@@ -569,16 +630,32 @@ const CellInputComponent = ({input, onSave}: {input: CellInput; onSave: (value: 
           <PencilIcon className="w-5 h-5 mr-2" />
           {editing ? 'Finish Editing' : 'Edit'}
         </button>
-        <button onClick={() => kernel?.runCell(input.id)} className="btn btn-primary">
+        <button
+          onClick={async () => {
+            setProcessing(true);
+            await kernel?.runCell(input.id, kernel?.cellHasOutput(input.id));
+            setProcessing(false);
+          }}
+          className="btn btn-primary"
+        >
           <PlayIcon className="w-5 h-5 mr-2" />
           {kernel?.cellHasOutput(input.id) ? 'Re-run Cell' : 'Run Cell'}
         </button>
+        {processing && <p className="text-yellow-500">Processing...</p>}
       </div>
     </div>
   );
 };
 
-const CellOutputComponent = ({output}: {output: CellOutput}) => {
+const CellOutputComponent = ({
+  output,
+  outputIndex,
+  input,
+}: {
+  output: CellOutput;
+  outputIndex?: number;
+  input: CellInput;
+}) => {
   const [editing, setEditing] = useState(false);
 
   const renderOutput = () => {
@@ -594,12 +671,12 @@ const CellOutputComponent = ({output}: {output: CellOutput}) => {
       return <p className="text-blue-500">No output available</p>;
     }
 
-    return <CellTypeComponent cellType={output.output} />;
+    return <CellTypeComponent cellType={output.output} dependencies={input.dependencies} />;
   };
 
   return (
     <div className="mt-6">
-      <h3 className="text-lg font-semibold mb-3">Output</h3>
+      <h3 className="text-lg font-semibold mb-3">Output {outputIndex}</h3>
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         {!editing ? (
           renderOutput()
@@ -638,3 +715,15 @@ const ErrorDisplay = ({error}: {error: {error: string}}) => {
     </div>
   );
 };
+
+const useNotebookStore = create((set) => ({
+  // bears: 0,
+  // increasePopulation: () => set((state) => ({ bears: state.bears + 1 })),
+  // removeAllBears: () => set({ bears: 0 }),
+}));
+
+function useEffectAsync(effect: () => Promise<void>, deps: React.DependencyList) {
+  React.useEffect(() => {
+    effect();
+  }, deps);
+}
