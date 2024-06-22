@@ -1,7 +1,7 @@
-import { FC } from "react";
-import { Link } from "react-router-dom";
+import {FC} from 'react';
+import {Link} from 'react-router-dom';
 
-const NoMatch: FC = () => {
+export const NoMatch: FC = () => {
   return (
     <section>
       <div className="flex min-h-screen w-screen flex-col items-center justify-center gap-y-5">
@@ -16,5 +16,3 @@ const NoMatch: FC = () => {
     </section>
   );
 };
-
-export default NoMatch;
