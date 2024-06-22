@@ -10,6 +10,7 @@ export async function runKernel(notebook: Notebook): Promise<Notebook> {
     'showIdea',
     'I want a gritty crime drama that takes place in 1941 utah but in a universe where dinosaurs are mailmen'
   );
+  /*
   await kernel.runCell('showIdea');
   await kernel.runCell('highLevelShowConcept');
   await kernel.runCell('showCharacters');
@@ -18,6 +19,7 @@ export async function runKernel(notebook: Notebook): Promise<Notebook> {
   await kernel.runCell('episode');
   await kernel.runCell('episodeScript');
   await kernel.runCell('episodeScenes');
+*/
   const result = kernel.saveBook();
   return JSON.parse(result);
 }
@@ -61,10 +63,6 @@ ai will:
             type: 'markdown',
           },
         },
-        output: {
-          id: 'showIdeaOutput',
-          processed: false,
-        },
       },
       {
         input: {
@@ -72,7 +70,7 @@ ai will:
           outputType: 'infer',
           dependencies: {
             showIdeaItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showIdeaOutput',
             },
           },
@@ -84,10 +82,6 @@ ai will:
             systemPrompt: 'You are a show creator writing out the show concept',
           },
         },
-        output: {
-          id: 'highLevelShowConceptOutput',
-          processed: false,
-        },
       },
       {
         input: {
@@ -95,7 +89,7 @@ ai will:
           outputType: 'infer',
           dependencies: {
             highLevelShowConceptItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'highLevelShowConceptOutput',
             },
           },
@@ -117,10 +111,6 @@ ai will:
             systemPrompt: 'You are a show creator writing out the characters',
           },
         },
-        output: {
-          id: 'showCharactersOutput',
-          processed: false,
-        },
       },
       {
         input: {
@@ -128,11 +118,11 @@ ai will:
           outputType: 'infer',
           dependencies: {
             showIdeaItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showIdeaOutput',
             },
             showCharactersItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showCharactersOutput',
             },
           },
@@ -144,10 +134,6 @@ ai will:
             systemPrompt: 'You are a show creator writing out the show bible',
           },
         },
-        output: {
-          id: 'showBibleOutput',
-          processed: false,
-        },
       },
       {
         input: {
@@ -155,15 +141,15 @@ ai will:
           outputType: 'infer',
           dependencies: {
             showIdeaItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showIdeaOutput',
             },
             showCharactersItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showCharactersOutput',
             },
             showBibleItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showBibleOutput',
             },
           },
@@ -184,10 +170,6 @@ ai will:
             systemPrompt: 'You are a show creator writing out the season',
           },
         },
-        output: {
-          id: 'seasonOutput',
-          processed: false,
-        },
       },
       {
         input: {
@@ -195,19 +177,19 @@ ai will:
           outputType: 'infer',
           dependencies: {
             showIdeaItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showIdeaOutput',
             },
             showCharactersItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showCharactersOutput',
             },
             showBibleItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showBibleOutput',
             },
             seasonItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'seasonOutput',
             },
           },
@@ -229,10 +211,6 @@ ai will:
             systemPrompt: 'You are a show creator writing out the episode',
           },
         },
-        output: {
-          id: 'episodeOutput',
-          processed: false,
-        },
       },
       {
         input: {
@@ -240,23 +218,23 @@ ai will:
           outputType: 'infer',
           dependencies: {
             showIdeaItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showIdeaOutput',
             },
             showCharactersItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showCharactersOutput',
             },
             showBibleItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showBibleOutput',
             },
             seasonItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'seasonOutput',
             },
             episodeItem: {
-              type: 'reference',
+              type: 'cellReference',
               forEach: true,
               cellId: 'episodeOutput',
             },
@@ -269,10 +247,6 @@ ai will:
             systemPrompt: 'You are a show creator writing out the episode script',
           },
         },
-        output: {
-          id: 'episodeScriptOutput',
-          processed: false,
-        },
       },
       {
         input: {
@@ -280,28 +254,28 @@ ai will:
           outputType: 'infer',
           dependencies: {
             showIdeaItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showIdeaOutput',
             },
             showCharactersItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showCharactersOutput',
             },
             showBibleItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'showBibleOutput',
             },
             seasonItem: {
-              type: 'reference',
+              type: 'cellReference',
               cellId: 'seasonOutput',
             },
             episodeItem: {
-              type: 'reference',
-              forEach: true,
-              cellId: 'episodeOutput',
+              type: 'outputReference',
+              cellId: 'episodeScriptOutput',
+              field: 'episodeItem',
             },
             episodeScriptItem: {
-              type: 'reference',
+              type: 'cellReference',
               forEach: true,
               cellId: 'episodeScriptOutput',
             },
@@ -321,10 +295,6 @@ ai will:
             ),
             systemPrompt: 'You are a show creator writing out the episode scenes',
           },
-        },
-        output: {
-          id: 'episodeScenesOutput',
-          processed: false,
         },
       },
     ],
@@ -351,10 +321,6 @@ function example1() {
             systemPrompt: 'You are a react native developer building a mesh gradient plugin',
           },
         },
-        output: {
-          id: 'defineTasksOutput',
-          processed: false,
-        },
       },
       {
         input: {
@@ -362,7 +328,7 @@ function example1() {
           outputType: 'infer',
           dependencies: {
             defineTasksOutputItem: {
-              type: 'reference',
+              type: 'cellReference',
               forEach: true,
               cellId: 'defineTasksOutput',
             },
@@ -376,31 +342,44 @@ function example1() {
             systemPrompt: 'You are a developer building a mesh gradient plugin',
           },
         },
-        output: {
-          id: 'executeTasks',
-          processed: false,
-        },
       },
     ],
   };
 }
 
+type NotebookCellOutputDetails =
+  | {
+      hasMultipleOutputs: true;
+      outputs: CellOutput[];
+    }
+  | {
+      hasMultipleOutputs: false;
+      output: CellOutput;
+    };
+export type NotebookCell = {
+  input: CellInput;
+  outputDetails?: NotebookCellOutputDetails;
+};
 export type Notebook = {
-  cells: {
-    input: CellInput;
-    output: CellOutput;
-  }[];
+  cells: NotebookCell[];
   metadata: {
     title: string;
   };
 };
 
 export type CellDependencies = {
-  [key: string]: {
-    type: 'reference';
-    forEach?: boolean;
-    cellId: string;
-  };
+  [key: string]:
+    | {
+        type: 'cellReference';
+        forEach?: boolean;
+        cellId: string;
+      }
+    | {
+        type: 'outputReference';
+        forEach?: boolean;
+        cellId: string;
+        field: string;
+      };
 };
 
 export type CellInput = {
@@ -410,9 +389,10 @@ export type CellInput = {
   input: CellTypes;
 };
 export type CellOutput = {
-  id?: string; // overwritable
+  id: string; // overwritable
   processed: boolean;
   output?: CellTypes;
+  outputReferences: {[key: string]: string};
   error?: CellOutputError;
   outputMeta?: {
     type: 'aiPrompt';
@@ -474,10 +454,6 @@ export type CellTypes =
   | {
       type: 'table';
       cells: string[][];
-    }
-  | {
-      type: 'array';
-      cells: CellOutput[];
     };
 
 export class NotebookKernel {
@@ -485,7 +461,13 @@ export class NotebookKernel {
     if (!this.notebook) {
       throw new Error('Notebook not loaded');
     }
-    return this.notebook.cells.find((x) => x.input.id === cellId)?.output.processed ?? false;
+    const cell = this.notebook.cells.find((x) => x.input.id === cellId);
+    if (!cell) {
+      throw new Error('Cell not found');
+    }
+    if (cell.outputDetails) {
+      return true;
+    }
   }
   private notebook?: Notebook;
   async runCell(cellId: string, force = false) {
@@ -498,11 +480,11 @@ export class NotebookKernel {
       throw new Error('Cell not found');
     }
     if (cellElement.input.id === cellId) {
-      if (cellElement.output.processed && !force) {
+      if (this.cellIsProcessed(cellElement) && !force) {
         return;
       }
-      const output = await this.runCellInput(cellElement.input, cellElement.output);
-      cellElement.output = output;
+      const outputDetails = await this.runCellInput(cellElement.input, cellElement.outputDetails);
+      cellElement.outputDetails = outputDetails;
     }
   }
 
@@ -526,7 +508,7 @@ export class NotebookKernel {
     }
   }
 
-  private async runCellInput(input: CellInput, output: CellOutput): Promise<CellOutput> {
+  private async runCellInput(input: CellInput, output?: NotebookCellOutputDetails): Promise<NotebookCellOutputDetails> {
     const {dependencies, dependencyArrays} = await this.fillDependencies(input);
     if (Object.keys(dependencyArrays).length > 0) {
       const dependencyCombinations: {
@@ -539,127 +521,122 @@ export class NotebookKernel {
           throw new Error('Dependency is not an array');
         }
       }
-      const results: CellOutput[] = [];
-      for (const combination of dependencyCombinations) {
-        results.push(await this.processCellInput(input, output, combination));
-      }
+
       return {
-        id: output.id ?? input.id + 'Output',
-        processed: true,
-        output: {
-          type: 'array',
-          cells: results.map((x, index) => {
-            return {...x, id: (x.id ?? input.id) + '$$' + index};
-          }),
-        },
+        hasMultipleOutputs: true,
+        outputs: await Promise.all(dependencyCombinations.map((x) => this.processCellInput(input, x))),
       };
-      // throw new Error('Not implemented');
     } else {
-      return await this.processCellInput(input, output, dependencies as {[p: string]: CellTypes | undefined});
+      return {
+        hasMultipleOutputs: false,
+        output: await this.processCellInput(input, dependencies as {[p: string]: CellTypes | undefined}),
+      };
     }
   }
 
   private async processCellInput(
     input: CellInput,
-    output: CellOutput,
     dependencies: {
       [p: string]: CellTypes | undefined;
     }
   ): Promise<CellOutput> {
+    const id = input.id + 'Output';
+    debugger;
+    const outputReferences = evaluateDependencies(dependencies);
     switch (input.input.type) {
       case 'number':
         return {
-          id: output.id ?? input.id + 'Output',
+          id: id,
           processed: true,
           output: {
             type: 'number',
             value: input.input.value,
           },
-        };
-      case 'array':
-        return {
-          id: output.id ?? input.id + 'Output',
-          processed: true,
-          output: {
-            type: 'array',
-            cells: input.input.cells,
-          },
+          outputReferences,
         };
       case 'image':
         return {
-          id: output.id ?? input.id + 'Output',
+          id: id,
           processed: true,
           output: {
             type: 'image',
             content: input.input.content,
           },
+          outputReferences,
         };
       case 'webpage':
         return {
-          id: output.id ?? input.id + 'Output',
+          id: id,
           processed: true,
           output: {
             type: 'webpage',
             content: input.input.content,
           },
+          outputReferences,
         };
       case 'table':
         return {
-          id: output.id ?? input.id + 'Output',
+          id: id,
           processed: true,
           output: {
             type: 'table',
             cells: input.input.cells,
           },
+          outputReferences,
         };
       case 'json':
         return {
-          id: output.id ?? input.id + 'Output',
+          id: id,
           processed: true,
           output: {
             type: 'json',
             value: input.input.value,
           },
+          outputReferences,
         };
       case 'jsonArray':
         return {
-          id: output.id ?? input.id + 'Output',
+          id: id,
           processed: true,
           output: {
             type: 'jsonArray',
             values: input.input.values,
           },
+          outputReferences,
         };
       case 'markdown':
         return {
-          id: output.id ?? input.id + 'Output',
+          id: id,
           processed: true,
           output: {
             type: 'markdown',
             content: processWithDependencies(input.input.content, dependencies),
           },
+          outputReferences,
         };
       case 'code': {
         const result = await runCode(processWithDependencies(input.input.content, dependencies));
         return {
-          id: output.id ?? input.id + 'Output',
+          id: id,
           processed: true,
           output: inferOutput(result),
+          outputReferences,
         };
       }
       case 'aiPrompt': {
         const result = await runAI(input.input, dependencies);
         if ('error' in result) {
           return {
-            id: output.id ?? input.id + 'Output',
+            id: id,
             processed: true,
             error: {
               error: result.error,
             },
+            outputReferences,
           };
         }
         return {
-          id: output.id ?? input.id + 'Output',
+          id: id,
           processed: true,
           output: inferOutput(result.result),
           outputMeta: {
@@ -669,6 +646,7 @@ export class NotebookKernel {
             costIn: result.costIn,
             costOut: result.costOut,
           },
+          outputReferences,
         };
       }
       case 'aiImagePrompt':
@@ -686,9 +664,9 @@ export class NotebookKernel {
       for (const dependencyKey in input.dependencies) {
         const dependency = input.dependencies[dependencyKey];
         switch (dependency.type) {
-          case 'reference': {
+          case 'cellReference': {
             const cell = this.notebook?.cells.find(
-              (x) => x.input.id === dependency.cellId || x.output.id === dependency.cellId
+              (x) => x.input.id === dependency.cellId || x.input?.id + 'Output' === dependency.cellId
             );
             if (!cell) {
               throw new Error('Cell not found');
@@ -708,26 +686,66 @@ export class NotebookKernel {
                 dependencies[dependencyKey] = result.value;
               }
             } else {
-              if (!cell.output.processed) {
+              if (!this.cellIsProcessed(cell)) {
                 await this.runCell(cell.input.id);
               }
-              const result = cellToArrayOrValue(cell.output.output);
-              if (!result) continue;
-              if (dependency.forEach) {
-                dependencyArrays[dependencyKey] = true;
-                if (result.type === 'array') {
-                  dependencies[dependencyKey] = result.values.map((x) => x);
+              if (!cell.outputDetails) {
+                throw new Error('Cell not processed');
+              }
+              if (cell.outputDetails.hasMultipleOutputs) {
+                const results = cell.outputDetails.outputs.map((o) => cellToArrayOrValue(o.output)).filter((a) => !!a);
+                if (results.length === 0) continue;
+                if (dependency.forEach) {
+                  dependencyArrays[dependencyKey] = true;
+                  dependencies[dependencyKey] = results.map((x) => x.value);
                 } else {
-                  dependencies[dependencyKey] = [result.value];
+                  dependencies[dependencyKey] = results.map((x) => x.value);
                 }
               } else {
-                dependencies[dependencyKey] = result.value;
+                const result = cellToArrayOrValue(cell.outputDetails.output?.output);
+                if (!result) continue;
+                if (dependency.forEach) {
+                  dependencyArrays[dependencyKey] = true;
+                  if (result.type === 'array') {
+                    dependencies[dependencyKey] = result.values.map((x) => x);
+                  } else {
+                    dependencies[dependencyKey] = [result.value];
+                  }
+                } else {
+                  dependencies[dependencyKey] = result.value;
+                }
               }
             }
             break;
           }
+          case 'outputReference': {
+            const cell = this.notebook?.cells.find(
+              (x) => x.input.id === dependency.cellId || x.input?.id + 'Output' === dependency.cellId
+            );
+            if (!cell) {
+              throw new Error('Cell not found');
+            }
+            if (!this.cellIsProcessed(cell)) {
+              await this.runCell(cell.input.id);
+            }
+            if (!cell.outputDetails) {
+              throw new Error('Cell not processed');
+            }
+            if (cell.outputDetails.hasMultipleOutputs) {
+              dependencies[dependencyKey] = {
+                type: 'jsonArray',
+                values: cell.outputDetails.outputs.map((x) => x.outputReferences[dependency.field]), // not right
+              };
+            } else {
+              dependencies[dependencyKey] = {
+                type: 'markdown',
+                content: cell.outputDetails.output!.outputReferences[dependency.field], // not right
+              };
+            }
+            break;
+          }
           default:
-            throw unreachable(dependency.type);
+            throw unreachable(dependency);
         }
       }
     }
@@ -739,6 +757,16 @@ export class NotebookKernel {
       throw new Error('Notebook not loaded');
     }
     return JSON.stringify(structuredClone(this.notebook), null, 2);
+  }
+
+  private cellIsProcessed(cellElement: NotebookCell) {
+    if (!cellElement.outputDetails) {
+      return false;
+    }
+    if (cellElement.outputDetails.hasMultipleOutputs) {
+      return cellElement.outputDetails.outputs.every((x) => x.processed);
+    }
+    return cellElement.outputDetails.output.processed;
   }
 }
 
@@ -898,6 +926,15 @@ function processWithDependencies(content: string, dependencies: {[p: string]: Ce
   return content;
 }
 
+function evaluateDependencies(dependencies: {[p: string]: CellTypes | undefined}) {
+  const evaluated: {[p: string]: any} = {};
+  for (const key in dependencies) {
+    const dependency = dependencies[key];
+    evaluated[key] = JSON.stringify(parseCell(dependency)); // not right
+  }
+  return evaluated;
+}
+
 function cellToString(cell: CellTypes | undefined): string {
   switch (cell?.type) {
     case undefined:
@@ -908,8 +945,6 @@ function cellToString(cell: CellTypes | undefined): string {
       return cell.value;
     case 'jsonArray':
       return JSON.stringify(cell.values);
-    case 'array':
-      return cell.cells.map((x) => cellToString(x.output)).join('\n');
     case 'number':
       return cell.value.toString();
     case 'image':
@@ -959,12 +994,6 @@ function cellToArrayOrValue(cell: CellTypes | undefined):
           type: 'json',
           value: x,
         })),
-      };
-    case 'array':
-      return {
-        type: 'array',
-        value: cell,
-        values: cell.cells.map((x) => x.output).filter((a) => a !== undefined),
       };
     case 'number':
       return {
@@ -1021,8 +1050,6 @@ function parseCell(cell: CellTypes | undefined): any {
       return cell.cells;
     case 'code':
       return cell.content;
-    case 'array':
-      return cell.cells.map((x) => parseCell(x.output));
     case 'aiPrompt':
       return cell.prompt;
     case 'aiImagePrompt':

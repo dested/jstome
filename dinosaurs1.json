@@ -1,0 +1,430 @@
+{
+  "metadata": {
+    "title": "buildShow"
+  },
+  "cells": [
+    {
+      "input": {
+        "id": "showIdea",
+        "dependencies": {},
+        "outputType": "infer",
+        "input": {
+          "content": "I want a gritty crime drama that takes place in 1941 utah but in a universe where dinosaurs are mailmen",
+          "type": "markdown"
+        }
+      },
+      "output": {
+        "id": "showIdeaOutput",
+        "processed": true,
+        "output": {
+          "type": "markdown",
+          "content": "I want a gritty crime drama that takes place in 1941 utah but in a universe where dinosaurs are mailmen"
+        }
+      }
+    },
+    {
+      "input": {
+        "id": "highLevelShowConcept",
+        "outputType": "infer",
+        "dependencies": {
+          "showIdeaItem": {
+            "type": "reference",
+            "cellId": "showIdeaOutput"
+          }
+        },
+        "input": {
+          "prompt": "Here is a high level show concept for `{{showIdeaItem}}`. Write out a detailed description of the show",
+          "model": "gpt-3.5-turbo-0125",
+          "type": "aiPrompt",
+          "systemPrompt": "You are a show creator writing out the show concept"
+        }
+      },
+      "output": {
+        "id": "highLevelShowConceptOutput",
+        "processed": true,
+        "output": {
+          "type": "markdown",
+          "content": "Title: \"Jurassic Deliveries\"\n\nLogline: In 1941 Utah, dinosaurs roam the streets as mailmen by day and ruthless criminals by night in this gritty crime drama where prehistoric predators deliver much more than just packages.\n\nSynopsis:\n\"Jurassic Deliveries\" is a unique blend of crime drama, alternative history, and prehistoric adventure set in a universe where dinosaurs have coexisted with humans, taking on the unexpected role of mail carriers. The story unfolds against the backdrop of Utah in 1941, a time of social upheaval, war brewing overseas, and a city teeming with both humans and dinosaurs.\n\nThe show follows the lives of a diverse ensemble of characters, each with their own struggles, ambitions, and relationships with the dinosaur mailmen. At the center of the narrative is Detective Jack Malone, a gritty and determined cop who is tasked with unraveling a series of mysterious crimes that have been plaguing the city. His partner, Sarah Campbell, brings a fresh perspective and a strong intuition to the investigation.\n\nAs Jack and Sarah delve deeper into the seedy underbelly of Utah, they encounter a colorful cast of suspects, allies, and foes, including a rogue gang of velociraptors led by the cunning and charismatic Crimson Claw. The line between friend and foe blurs as alliances shift, secrets are revealed, and the true nature of the dinosaur mailmen is brought to light.\n\nMeanwhile, tensions escalate between the human population and the dinosaur community, leading to a power struggle that threatens to tear the city apart. Against this backdrop, Jack and Sarah must navigate treacherous alliances, outwit dangerous adversaries, and confront their own personal demons as they race against time to solve the case and restore order to Utah.\n\nThrough its thrilling blend of crime noir, alternative history, and prehistoric intrigue, \"Jurassic Deliveries\" weaves a complex and gripping narrative that challenges our assumptions about power, loyalty, and identity in a world where dinosaurs are not just relics of the past, but living, breathing members of society."
+        },
+        "outputMeta": {
+          "type": "aiPrompt",
+          "tokensIn": 63,
+          "tokensOut": 411,
+          "costIn": 0.0000315,
+          "costOut": 0.00009449999999999999
+        }
+      }
+    },
+    {
+      "input": {
+        "id": "showCharacters",
+        "outputType": "infer",
+        "dependencies": {
+          "showIdeaItem": {
+            "type": "reference",
+            "cellId": "showIdeaOutput"
+          }
+        },
+        "input": {
+          "prompt": "Here are is the high level show concept for `{{showIdeaItem}}`. Write out a list of characters, their backgrounds, and their arcs, motivations, etc",
+          "model": "gpt-3.5-turbo-0125",
+          "type": "aiPrompt",
+          "schema": "z.array(z.object({\n                                characterName: z.string({}),\n                                characterBackground: z.string({}),\n                                characterArc: z.string({}),\n                                characterMotivation: z.string({})\n                            }))",
+          "systemPrompt": "You are a show creator writing out the characters"
+        }
+      },
+      "output": {
+        "id": "showCharactersOutput",
+        "processed": true,
+        "output": {
+          "type": "jsonArray",
+          "values": [
+            "{\"characterName\":\"Detective Sarah McCallister\",\"characterBackground\":\"Former military officer turned detective, haunted by the war and looking for redemption\",\"characterArc\":\"Overcoming her PTSD and finding purpose in solving the case of the missing dinosaur mailmen\",\"characterMotivation\":\"To make amends for past mistakes and protect her community\"}",
+            "{\"characterName\":\"Dr. Henry Grant\",\"characterBackground\":\"Paleontologist with a secret past working as a consultant for the police department\",\"characterArc\":\"Discovering the truth about the disappearance of the dinosaur mailmen and confronting his own dark history\",\"characterMotivation\":\"To uncover the conspiracy and protect the ancient creatures he loves\"}",
+            "{\"characterName\":\"Mayor Charlotte Johnson\",\"characterBackground\":\"Trailblazing politician facing opposition from corrupt officials and dinosaur rights activists\",\"characterArc\":\"Navigating political intrigue while balancing the interests of humans and dinosaurs in the city\",\"characterMotivation\":\"To uphold justice and create a harmonious society for all inhabitants, regardless of species\"}"
+          ]
+        },
+        "outputMeta": {
+          "type": "aiPrompt",
+          "tokensIn": 128,
+          "tokensOut": 198,
+          "costIn": 0.000064,
+          "costOut": 0.000192
+        }
+      }
+    },
+    {
+      "input": {
+        "id": "showBible",
+        "outputType": "infer",
+        "dependencies": {
+          "showIdeaItem": {
+            "type": "reference",
+            "cellId": "showIdeaOutput"
+          },
+          "showCharactersItem": {
+            "type": "reference",
+            "cellId": "showCharactersOutput"
+          }
+        },
+        "input": {
+          "prompt": "Here are is the high level show concept for `{{showIdeaItem}}` and the characters `{{showCharactersItem}}`. Write out the show bible, including the world, the rules, the tone, the themes, etc",
+          "model": "gpt-3.5-turbo-0125",
+          "type": "aiPrompt",
+          "systemPrompt": "You are a show creator writing out the show bible"
+        }
+      },
+      "output": {
+        "id": "showBibleOutput",
+        "processed": true,
+        "output": {
+          "type": "markdown",
+          "content": "**Title:** \"Jurassic Mailmen\"\n\n**Genre:** Gritty Crime Drama\n\n**Setting:** 1941 Utah, but in a universe where dinosaurs are mailmen. The city is a mix of old-world charm and prehistoric wonder, with towering dinosaur mailmen delivering mail to the residents. However, beneath the surface serenity lies a dark underworld of crime, corruption, and conspiracy.\n\n**World:**\nIn this alternative reality, dinosaurs never went extinct and have coexisted with humans throughout history. They have evolved to communicate, wear clothing, and hold jobs, such as being mail carriers. The year is 1941, and the city of Utah is a bustling metropolis where humans and dinosaur citizens live side by side, sometimes in harmony and sometimes in conflict.\n\n**Rules:**\n- Dinosaurs are intelligent, sentient beings capable of speech and complex thought.\n- Dinosaur mailmen deliver mail in the city, serving as a symbolic link between the past and the present.\n- The police department works closely with dinosaur consultants, acknowledging their unique abilities and perspectives.\n- Humans and dinosaurs have equal rights and responsibilities in society.\n\n**Tone:**\n\"Jurassic Mailmen\" strikes a balance between the whimsical charm of prehistoric creatures working as mail carriers and the gritty realism of a crime drama set in a city rife with corruption. The tone is dark and atmospheric, highlighting themes of redemption, justice, and redemption, all within a fantastical world where dinosaurs coexist with humans.\n\n**Themes:**\n- Redemption and Second Chances: Each character is grappling with their past mistakes and seeking redemption in some form, whether it's solving a case, uncovering the truth, or challenging the status quo.\n- Coexistence and Unity: The show explores the challenges of living in a diverse society where humans and dinosaurs must work together to create a harmonious community.\n- Power and Corruption: The city's political landscape is marred by corruption and power struggles, with characters navigating treacherous waters to uphold justice and create a fair society for all inhabitants.\n- Identity and Secrets: Characters must confront their own dark histories and hidden truths, leading to personal growth and self-discovery.\n\n**Main Characters:**\n- **Detective Sarah McCallister**: A former military officer turned detective, haunted by her past and seeking redemption through solving the case of the missing dinosaur mailmen.\n- **Dr. Henry Grant**: A paleontologist with a secret past working as a consultant for the police department, determined to uncover the truth behind the disappearance of the dinosaur mailmen and confront his own dark history.\n- **Mayor Charlotte Johnson**: A trailblazing politician facing opposition from corrupt officials and dinosaur rights activists, navigating political intrigue and balancing the interests of humans and dinosaurs in the city.\n\n**Character Arcs:**\n- Detective McCallister must overcome her PTSD and find purpose in solving the case, ultimately making amends for her past mistakes and protecting her community.\n- Dr. Grant will discover the truth about the disappearance of the dinosaur mailmen, leading him to confront his own dark history and motivate him to uncover the conspiracy to protect the ancient creatures he loves.\n- Mayor Johnson must navigate political intrigue while balancing the interests of humans and dinosaurs in the city, striving to uphold justice and create a harmonious society for all inhabitants, regardless of species.\n\n**Overall Story Arc:**\nAs the city reels from the disappearance of the dinosaur mailmen, Detective McCallister, Dr. Grant, and Mayor Johnson find themselves entangled in a web of conspiracy, corruption, and power struggles that threaten the delicate balance between humans and dinosaurs. Together, they must uncover the truth, confront their pasts, and work towards a future where justice and unity prevail in the midst of chaos."
+        },
+        "outputMeta": {
+          "type": "aiPrompt",
+          "tokensIn": 285,
+          "tokensOut": 757,
+          "costIn": 0.0001425,
+          "costOut": 0.0004275
+        }
+      }
+    },
+    {
+      "input": {
+        "id": "season",
+        "outputType": "infer",
+        "dependencies": {
+          "showIdeaItem": {
+            "type": "reference",
+            "cellId": "showIdeaOutput"
+          },
+          "showCharactersItem": {
+            "type": "reference",
+            "cellId": "showCharactersOutput"
+          },
+          "showBibleItem": {
+            "type": "reference",
+            "cellId": "showBibleOutput"
+          }
+        },
+        "input": {
+          "prompt": "Here are is the high level show concept for `{{showIdeaItem}}`, the characters `{{showCharactersItem}}`, and the show bible `{{showBibleItem}}`. Write out a 6 episode season, their plots, and how they fit into the overall story",
+          "model": "gpt-3.5-turbo-0125",
+          "type": "aiPrompt",
+          "schema": "z.array(z.object({\n                                episodeNumber: z.number({}),\n                                episodePlot: z.string({}),\n                                episodeFit: z.string({})\n                            }))",
+          "systemPrompt": "You are a show creator writing out the season"
+        }
+      },
+      "output": {
+        "id": "seasonOutput",
+        "processed": true,
+        "output": {
+          "type": "jsonArray",
+          "values": [
+            "{\"episodeNumber\":1,\"episodePlot\":\"The Pilot episode introduces the audience to the city of Utah in 1941 where humans and dinosaur citizens coexist. When a prominent dinosaur mailman goes missing, Detective McCallister, Dr. Grant, and Mayor Johnson are each drawn into the investigation, setting the stage for the season's central mystery.\",\"episodeFit\":\"Establishes the overarching storyline of the missing dinosaur mailmen and sets up the main characters' motivations and dynamics.\"}",
+            "{\"episodeNumber\":2,\"episodePlot\":\"As Detective McCallister delves deeper into the case, she uncovers a network of underground crime syndicates that may be connected to the disappearance of the dinosaur mailmen. Dr. Grant's expertise in paleontology proves vital in deciphering clues left behind, while Mayor Johnson faces political backlash for her involvement in the investigation.\",\"episodeFit\":\"Explores the darker side of the city's underworld and showcases each character's unique skills in unraveling the mystery.\"}",
+            "{\"episodeNumber\":3,\"episodePlot\":\"Tensions rise between humans and dinosaurs as more mailmen mysteriously vanish, leading to protests and unrest in the city. Detective McCallister faces personal challenges as she confronts her PTSD while chasing leads, and Dr. Grant uncovers a shocking revelation about the ancient origins of the dinosaur mailmen.\",\"episodeFit\":\"Heightens the stakes and deepens the mystery, pushing the characters to confront their own demons and secrets in the pursuit of justice.\"}",
+            "{\"episodeNumber\":4,\"episodePlot\":\"The city is plunged into chaos as a rival faction within the police department threatens to impede the investigation, putting Dr. Grant's and Mayor Johnson's lives in danger. Detective McCallister must make a pivotal decision that will test her loyalty and determination to solve the case, even as betrayal looms on the horizon.\",\"episodeFit\":\"Intensifies the conflict and adds layers of intrigue and danger to the overarching narrative, forcing the characters to make difficult choices that will shape their fates.\"}",
+            "{\"episodeNumber\":5,\"episodePlot\":\"With the truth inching closer to the surface, Detective McCallister, Dr. Grant, and Mayor Johnson form an unlikely alliance to expose the conspiracy behind the missing dinosaur mailmen. They confront powerful figures and risk everything to ensure that justice prevails and the city's fragile harmony is preserved.\",\"episodeFit\":\"Brings the main characters together in a united front against the forces threatening their community, highlighting their growth and solidarity in the face of adversity.\"}",
+            "{\"episodeNumber\":6,\"episodePlot\":\"In the season finale, the mystery of the missing dinosaur mailmen is finally unraveled, revealing a web of deceit, betrayal, and sacrifice that shakes the city to its core. Detective McCallister, Dr. Grant, and Mayor Johnson must confront their own pasts and make life-changing decisions that will determine the fate of both humans and dinosaurs in Utah.\",\"episodeFit\":\"Wraps up the central storyline while laying the groundwork for future conflicts and character development, setting the stage for the next season's challenges and revelations.\"}"
+          ]
+        },
+        "outputMeta": {
+          "type": "aiPrompt",
+          "tokensIn": 1095,
+          "tokensOut": 617,
+          "costIn": 0.0005475,
+          "costOut": 0.0016425
+        }
+      }
+    },
+    {
+      "input": {
+        "id": "episode",
+        "outputType": "infer",
+        "dependencies": {
+          "showIdeaItem": {
+            "type": "reference",
+            "cellId": "showIdeaOutput"
+          },
+          "showCharactersItem": {
+            "type": "reference",
+            "cellId": "showCharactersOutput"
+          },
+          "showBibleItem": {
+            "type": "reference",
+            "cellId": "showBibleOutput"
+          },
+          "seasonItem": {
+            "type": "reference",
+            "cellId": "seasonOutput"
+          }
+        },
+        "input": {
+          "prompt": "Here are is the high level show concept for `{{showIdeaItem}}`, the characters `{{showCharactersItem}}`, the show bible `{{showBibleItem}}`, and the season `{{seasonItem}}`. Dive into the details of each episode, writing out the dialogue, the action, the pacing, etc",
+          "model": "gpt-3.5-turbo-0125",
+          "type": "aiPrompt",
+          "schema": "z.array(z.object({\n                                episodeNumber: z.number({}),\n                                episodeDialogue: z.string({}),\n                                episodeAction: z.string({}),\n                                episodePacing: z.string({})\n                            }))",
+          "systemPrompt": "You are a show creator writing out the episode"
+        }
+      },
+      "output": {
+        "id": "episodeOutput",
+        "processed": true,
+        "output": {
+          "type": "jsonArray",
+          "values": [
+            "{\"episodeNumber\":1,\"episodeDialogue\":\"Detective Sarah McCallister: Good morning, Utah. Another day, another mystery. Let's find out where our missing mailman went. Dr. Grant, any insights from the scene?\",\"episodeAction\":\"Detective McCallister surveys the area for clues as Dr. Grant examines trace fossils left behind by the vanished mailman. Mayor Johnson observes from a distance, pondering the implications for the city's future.\",\"episodePacing\":\"The episode sets a somber tone as the trio begins their investigation, with hints of intrigue and unease underlying their interactions.\"}",
+            "{\"episodeNumber\":2,\"episodeDialogue\":\"Dr. Henry Grant: These fossils date back millions of years, yet they're here, in our city. Someone is tampering with history. Mayor Johnson, we need your influence to navigate this treacherous path.\",\"episodeAction\":\"Detective McCallister follows leads to underground speakeasies, uncovering ties to organized crime syndicates. Dr. Grant deciphers ancient markings that reveal a possible motive for the mailmen's disappearance. Mayor Johnson faces backlash from city officials opposed to her involvement in the case.\",\"episodePacing\":\"The tension escalates as the characters delve deeper into the city's underworld, with action-packed sequences mirroring the characters' growing determination and risks.\"}",
+            "{\"episodeNumber\":3,\"episodeDialogue\":\"Mayor Charlotte Johnson: We stand at a crossroads, where fear threatens to divide us. But we must remember, we are all part of this city, human and dinosaur alike. Together, we can overcome this darkness.\",\"episodeAction\":\"Riots erupt in the streets as tensions between humans and dinosaurs reach a breaking point. Detective McCallister confronts her inner demons while pursuing leads, and Dr. Grant uncovers a startling connection between the vanished mailmen and ancient rituals.\",\"episodePacing\":\"The episode is emotionally charged, with dramatic confrontations and plot twists heightening the suspense and challenging the characters' resolve.\"}",
+            "{\"episodeNumber\":4,\"episodeDialogue\":\"Detective Sarah McCallister: Loyalty is a fragile commodity in this city. Choose your allies wisely, for betrayal lurks in the shadows. Dr. Grant, Mayor Johnson, we must stand united against this new threat.\",\"episodeAction\":\"A power struggle within the police department puts Dr. Grant and Mayor Johnson in jeopardy, testing Detective McCallister's loyalty. Betrayal looms as the trio faces a dangerous enemy within their ranks.\",\"episodePacing\":\"The episode is filled with high-stakes drama and intricate alliances, building towards a climactic showdown that will reshape the characters' relationships and motivations.\"}",
+            "{\"episodeNumber\":5,\"episodeDialogue\":\"Dr. Henry Grant: The truth is a weapon that can cut both ways. Are we prepared to wield it, knowing the cost it may exact? Together, we must confront the shadows that haunt us and emerge stronger for the battles ahead.\",\"episodeAction\":\"Detective McCallister, Dr. Grant, and Mayor Johnson join forces to expose the conspiracy behind the missing mailmen, confronting powerful figures and risking everything for justice. Their unity is tested as they face the ultimate challenge to protect their city's fragile harmony.\",\"episodePacing\":\"The tension reaches its peak as the main characters confront the truth head-on, with gripping action sequences and emotional resolutions that underscore the journey they've embarked on together.\"}",
+            "{\"episodeNumber\":6,\"episodeDialogue\":\"Mayor Charlotte Johnson: In the heart of darkness, we find the light that guides us forward. Our choices define us, and today, we choose unity over discord, truth over deception. Together, we write the next chapter of Utah's history.\",\"episodeAction\":\"The mystery of the missing mailmen unravels, exposing a web of deceit and sacrifice that shakes the city to its core. Detective McCallister, Dr. Grant, and Mayor Johnson must confront their pasts and make life-altering decisions that will shape the future of humans and dinosaurs in Utah.\",\"episodePacing\":\"The season finale delivers a gripping conclusion to the central storyline, with revelations that challenge the characters' beliefs and set the stage for future conflicts and growth.\"}"
+          ]
+        },
+        "outputMeta": {
+          "type": "aiPrompt",
+          "tokensIn": 1744,
+          "tokensOut": 842,
+          "costIn": 0.000872,
+          "costOut": 0.0026160000000000003
+        }
+      }
+    },
+    {
+      "input": {
+        "id": "episodeScript",
+        "outputType": "infer",
+        "dependencies": {
+          "showIdeaItem": {
+            "type": "reference",
+            "cellId": "showIdeaOutput"
+          },
+          "showCharactersItem": {
+            "type": "reference",
+            "cellId": "showCharactersOutput"
+          },
+          "showBibleItem": {
+            "type": "reference",
+            "cellId": "showBibleOutput"
+          },
+          "seasonItem": {
+            "type": "reference",
+            "cellId": "seasonOutput"
+          },
+          "episodeItem": {
+            "type": "reference",
+            "forEach": true,
+            "cellId": "episodeOutput"
+          }
+        },
+        "input": {
+          "prompt": "Here are is the high level show concept for `{{showIdeaItem}}`, the characters `{{showCharactersItem}}`, the show bible `{{showBibleItem}}`, the season `{{seasonItem}}`. The episode is `{{episodeItem}}`. Write out the episode in script format",
+          "model": "gpt-3.5-turbo-0125",
+          "type": "aiPrompt",
+          "systemPrompt": "You are a show creator writing out the episode script"
+        }
+      },
+      "output": {
+        "id": "episodeScriptOutput",
+        "processed": true,
+        "output": {
+          "type": "array",
+          "cells": [
+            {
+              "id": "episodeScriptOutput$$0",
+              "processed": true,
+              "output": {
+                "type": "markdown",
+                "content": "**Title:** \"Jurassic Mailmen\"\n\n**Episode:** Pilot\n\n**INT. UTAH POLICE DEPARTMENT - DAY**\n\n*The camera pans through the bustling police department in the city of Utah, where humans and dinosaurs walk side by side. Detective SARAH MCCALLISTER, a tough and haunted former military officer turned detective, sits at her desk, studying a missing persons case file.*\n\n**DETECTIVE MCCALLISTER:** (voiceover) *In a city where dinosaurs deliver the mail, not everything is as it seems.*\n\n**INT. DR. GRANT'S PALEONTOLOGY LAB - DAY**\n\n*DR. HENRY GRANT, a paleontologist with a secret past, carefully examines a fossil, lost in thought.*\n\n**DR. GRANT:** (muttering) *There's more to this city than meets the eye.*\n\n**INT. CITY HALL - DAY**\n\n*MAYOR CHARLOTTE JOHNSON, a determined and visionary politician, faces off against corrupt officials and dinosaur rights activists.*\n\n**MAYOR JOHNSON:** *We must explore every avenue to ensure justice for all residents of Utah, regardless of species.*\n\n**EXT. CITY STREETS - DAY**\n\n*A towering dinosaur mailman, decked out in a postal uniform, delivers mail to residents, adding a touch of whimsy to the bustling city streets.*\n\n**DETECTIVE MCCALLISTER:** *We've got a missing dinosaur mailman. I need answers.*\n\n**DR. GRANT:** *The fossils hold the key to unraveling this mystery.*\n\n**MAYOR JOHNSON:** *I'll do whatever it takes to protect the harmony of our city.*\n\n**INT. DARK ALLEYWAY - NIGHT**\n\n*Detective McCallister follows a lead into a shadowy alley, her hand hovering over her gun.*\n\n**DETECTIVE MCCALLISTER:** *Show yourself!*\n\n*She is met by a hooded figure, who disappears into the darkness.*\n\n**INT. UNDERGROUND TUNNELS - NIGHT**\n\n*Dr. Grant navigates through underground tunnels, uncovering ancient runes that hint at a sinister plot.*\n\n**DR. GRANT:** *The conspiracy runs deeper than we ever imagined.*\n\n**INT. CITY HALL - NIGHT**\n\n*Mayor Johnson confronts a group of shady officials, her resolve unwavering.*\n\n**MAYOR JOHNSON:** *I will not be swayed by your corruption.*\n\n**INT. POLICE STATION - DAY**\n\n*Detective McCallister, Dr. Grant, and Mayor Johnson come together, their paths converging in pursuit of the truth.*\n\n**DETECTIVE MCCALLISTER:** *We need to work together if we're going to solve this.*\n\n**DR. GRANT:** *The answers lie within the past.*\n\n**MAYOR JOHNSON:** *It's time to uncover the darkness that lurks beneath the surface.*\n\n*The trio shares a determined look, setting the stage for the challenges and revelations to come.*\n\n**FADE OUT.**\n\n**END OF EPISODE.**"
+              },
+              "outputMeta": {
+                "type": "aiPrompt",
+                "tokensIn": 1680,
+                "tokensOut": 630,
+                "costIn": 0.00084,
+                "costOut": 0.00252
+              }
+            },
+            {
+              "id": "episodeScriptOutput$$1",
+              "processed": true,
+              "output": {
+                "type": "markdown",
+                "content": "**Title:** \"Jurassic Mailmen\"\n\n**Genre:** Gritty Crime Drama\n\n**Episode Number:** 1\n\n**Episode Title:** \"The Vanishing Mailman\"\n\n---\n\nFADE IN:\n\nEXT. UTAH CITY STREET - MORNING\n\nThe bustling city of Utah in 1941 comes to life, with towering dinosaur mailmen weaving through the streets, delivering letters and packages to the citizens.\n\nDETECTIVE SARAH MCCALLISTER, a determined and haunted former military officer turned detective, stands at the scene of a mysterious disappearance, her eyes scanning the area for clues.\n\nDETECTIVE MCCALLISTER\nGood morning, Utah. Another day, another mystery. Let's find out where our missing mailman went. Dr. Grant, any insights from the scene?\n\nDR. HENRY GRANT, a paleontologist with a secret past, crouches down to examine the trace fossils left behind by the vanished mailman.\n\nDR. GRANT\n(solemn)\nThese markings suggest a struggle took place here. The missing mailman didn't leave willingly.\n\nMAYOR CHARLOTTE JOHNSON, a trailblazing politician facing opposition from corrupt officials, watches from a distance, her expression a mix of concern and determination.\n\nMAYOR JOHNSON\n(ruminating)\nThe disappearance of a prominent dinosaur mailman threatens the delicate balance in our city. We must act swiftly to unravel this mystery.\n\nThe trio begins their investigation, each driven by their own motivations and haunted by their pasts.\n\nEPISODE PACING: The episode sets a somber tone as Detective McCallister, Dr. Grant, and Mayor Johnson embark on a journey filled with intrigue and unease, laying the foundation for the season's central mystery.\n\nCUT TO BLACK.\n\n---\n\nEND OF EPISODE 1."
+              },
+              "outputMeta": {
+                "type": "aiPrompt",
+                "tokensIn": 1804,
+                "tokensOut": 370,
+                "costIn": 0.000902,
+                "costOut": 0.002706
+              }
+            },
+            {
+              "id": "episodeScriptOutput$$2",
+              "processed": true,
+              "output": {
+                "type": "markdown",
+                "content": "**Title: \"Jurassic Mailmen\"**\n\n**Episode 2: \"Bones of Contention\"**\n\n*Fade in to the bustling streets of 1941 Utah, where dinosaur mailmen deliver mail amidst a mix of old-world charm and prehistoric wonder.*\n\n*Cut to the police department where Detective Sarah McCallister, Dr. Henry Grant, and Mayor Charlotte Johnson convene to discuss the case of the missing dinosaur mailmen.*\n\n**Detective McCallister:** These disappearances are not random. There's a pattern here, a network of crime syndicates operating beneath the surface.\n\n**Dr. Grant:** These fossils date back millions of years, yet they're here, in our city. Someone is tampering with history.\n\n**Mayor Johnson:** We need your influence to navigate this treacherous path, Dr. Grant.\n\n*Detective McCallister follows leads to underground speakeasies, uncovering ties to organized crime syndicates. Dr. Grant diligently deciphers ancient markings that reveal a possible motive for the mailmen's disappearance.*\n\n**Episode Action:**\n- *Detective McCallister confronts shady characters in dimly lit back alleys, exchanging information for clues.*\n- *Dr. Grant meticulously examines ancient artifacts, piecing together a puzzle that hints at a centuries-old conspiracy.*\n- *Mayor Johnson faces backlash from city officials opposed to her involvement in the case, testing her resolve and political acumen.*\n\n**Episode Pacing:**\n- *The tension escalates as the characters delve deeper into the city's underworld, with action-packed sequences mirroring their growing determination and risks.*\n- *Each revelation brings them closer to the truth, but also closer to danger as unseen forces move against them.*\n\n*The city of Utah hums with intrigue and danger as Detective McCallister, Dr. Grant, and Mayor Johnson navigate a world where the line between past and present blurs, and the fate of both humans and dinosaurs hangs in the balance.*\n\n*Fade to black.*\n\n**End of Episode 2.**\n\nStay tuned for the next thrilling installment of \"Jurassic Mailmen.\""
+              },
+              "outputMeta": {
+                "type": "aiPrompt",
+                "tokensIn": 1827,
+                "tokensOut": 425,
+                "costIn": 0.0009135,
+                "costOut": 0.0027405
+              }
+            },
+            {
+              "id": "episodeScriptOutput$$3",
+              "processed": true,
+              "output": {
+                "type": "markdown",
+                "content": "**Title: Jurassic Mailmen**\n**Episode: 3 - \"Crossroads\"**\n**Written by: [Your Name]**\n\n[Opening shot of the bustling city of Utah, where humans and dinosaur citizens coexist. The camera pans to reveal riots erupting in the streets as tensions between the two groups reach a breaking point. Detective McCallister is seen navigating through the chaos, determined to solve the mystery of the missing dinosaur mailmen. Dr. Grant is deep in thought, studying ancient artifacts in his lab, while Mayor Johnson addresses a crowd of protesters.]\n\n**INT. CITY HALL - DAY**\n[Mayor Charlotte Johnson stands at a podium, addressing the crowd of humans and dinosaurs gathered in the grand hall. Her voice is filled with determination and hope.]\n\n**MAYOR JOHNSON**\nWe stand at a crossroads, where fear threatens to divide us. But we must remember, we are all part of this city, human and dinosaur alike. Together, we can overcome this darkness.\n\n**CROWD MEMBER**\n(shouting) We want justice for the missing mailmen!\n\n**MAYOR JOHNSON**\nWe will find the truth and ensure justice is served. But we must do so united, as one community.\n\n[Cut to Detective McCallister, her face etched with determination, as she follows a lead through the crowded streets. She grapples with her own inner demons, haunted by memories of the war.]\n\n**INT. POLICE STATION - INTERROGATION ROOM - DAY**\n[Dr. Grant is seen examining a piece of evidence, his brow furrowed in concentration. He makes a connection between the vanished mailmen and ancient rituals, a look of realization crossing his face.]\n\n**DR. GRANT**\n(to himself) It all makes sense now. The answer lies in the past.\n\n[Cut to a montage of scenes showing the escalating tensions between humans and dinosaurs, with confrontations and clashes breaking out in various parts of the city. The episode builds to a suspenseful climax.]\n\n**EXT. CITY STREETS - NIGHT**\n[Dramatic music builds as Detective McCallister, Dr. Grant, and Mayor Johnson converge in a secret meeting place, their faces set in determination.]\n\n**DETECTIVE MCCALLISTER**\nWe need to work together to solve this. We can't let fear tear us apart.\n\n**MAYOR JOHNSON**\nAgreed. We must face this threat head-on, for the sake of our city and all who call it home.\n\n[As they make a plan to uncover the conspiracy behind the missing dinosaur mailmen, the camera pans out, showing the city in turmoil yet united in its resolve.]\n\n**FADE OUT**\n\n**END OF EPISODE 3**"
+              },
+              "outputMeta": {
+                "type": "aiPrompt",
+                "tokensIn": 1814,
+                "tokensOut": 558,
+                "costIn": 0.000907,
+                "costOut": 0.0027210000000000003
+              }
+            },
+            {
+              "id": "episodeScriptOutput$$4",
+              "processed": true,
+              "output": {
+                "type": "markdown",
+                "content": "**Title: \"Jurassic Mailmen\"**\n\n**Episode Number: 4 - \"Betrayal in the Shadows\"**\n\n**[INT. POLICE STATION - DAY]**\n\n*The camera pans across the bustling police station, where Detective Sarah McCallister, Dr. Henry Grant, and Mayor Charlotte Johnson stand together, their expressions tense with determination.*\n\n**DETECTIVE MCCALLISTER:** Loyalty is a fragile commodity in this city. Choose your allies wisely, for betrayal lurks in the shadows. Dr. Grant, Mayor Johnson, we must stand united against this new threat.\n\n*Dr. Grant nods solemnly, while Mayor Johnson squares her shoulders in resolve.*\n\n**EPISODE ACTION:**\n\n*A power struggle within the police department puts Dr. Grant and Mayor Johnson in jeopardy, testing Detective McCallister's loyalty. Betrayal looms as the trio faces a dangerous enemy within their ranks.*\n\n**[INT. MAYOR'S OFFICE - CONTINUOUS]**\n\n*Mayor Johnson stares out the window, her brow furrowed with concern as she addresses Detective McCallister.*\n\n**MAYOR JOHNSON:** We can't let this corruption fester any longer. We need to act decisively before it's too late.\n\n**DETECTIVE MCCALLISTER:** Agreed. But we have to be careful. Our enemies are closer than we think.\n\n**[INT. POLICE STATION - CONTINUOUS]**\n\n*Dr. Grant sifts through a pile of evidence, his brow creased in thought.*\n\n**DR. GRANT:** The key to unraveling this conspiracy lies in the details. We must tread carefully and stay one step ahead.\n\n*The tension in the room is palpable as the trio gears up for the impending showdown.*\n\n**EPISODE PACING:**\n\n*The episode is filled with high-stakes drama and intricate alliances, building towards a climactic showdown that will reshape the characters' relationships and motivations.*\n\n**[INT. UNDERGROUND LAIR - NIGHT]**\n\n*Detective McCallister, Dr. Grant, and Mayor Johnson cautiously navigate the dimly lit corridors of the underground hideout, their weapons drawn.*\n\n**DETECTIVE MCCALLISTER:** We're walking into a trap. Stay alert.\n\n*Suddenly, a figure emerges from the shadows, blocking their path.*\n\n**VILLAIN:** Ah, the noble trio. How unfortunate that your loyalty will be your undoing.\n\n*The scene cuts to black, leaving the audience on the edge of their seats.*\n\n**[END OF EPISODE]**\n\n*Tune in next time for more twists, betrayals, and revelations in \"Jurassic Mailmen.\"*"
+              },
+              "outputMeta": {
+                "type": "aiPrompt",
+                "tokensIn": 1813,
+                "tokensOut": 541,
+                "costIn": 0.0009065,
+                "costOut": 0.0027194999999999997
+              }
+            },
+            {
+              "id": "episodeScriptOutput$$5",
+              "processed": true,
+              "output": {
+                "type": "markdown",
+                "content": "**Title: Jurassic Mailmen**\n\n**Episode 5: The Unveiling Truth**\n\n[INT. POLICE STATION - DAY]\n\n*The camera pans through the bustling station as Detective SARAH MCCALLISTER, DR. HENRY GRANT, and MAYOR CHARLOTTE JOHNSON gather in a heated discussion.*\n\n**DR. GRANT:** The truth is a weapon that can cut both ways. Are we prepared to wield it, knowing the cost it may exact?\n\n**MAYOR JOHNSON:** We have come too far to turn back now. We must expose the conspiracy and ensure justice prevails in our city.\n\n**DETECTIVE MCCALLISTER:** Together, we must confront the shadows that haunt us and emerge stronger for the battles ahead.\n\n[Cut to: EXT. CITY STREETS - NIGHT]\n\n*The trio sets out into the night, determined expressions on their faces as they delve deeper into the heart of the mystery.*\n\n[Cut to: INT. ABANDONED WAREHOUSE - CONTINUOUS]\n\n*They confront a group of shadowy figures, the leaders of the conspiracy, as tension crackles in the air.*\n\n**DR. GRANT:** (firmly) We know what you've done. It's time to face the consequences of your actions.\n\n**MAYOR JOHNSON:** (with authority) The city will not tolerate corruption and injustice any longer. We stand united against you.\n\n**DETECTIVE MCCALLISTER:** (steely) We will not rest until the truth is known and justice is served. Your reign of deception ends here.\n\n[Cut to: INT. POLICE STATION - CONTINUOUS]\n\n*The mood shifts as the confrontation escalates into a thrilling showdown, with high stakes and dramatic revelations.*\n\n**DR. GRANT:** (to the figures) You underestimated us. But now, we will expose your secrets and bring light to the darkness you've cast upon our city.\n\n**MAYOR JOHNSON:** (defiantly) No more hiding in the shadows. The truth will be our shield, and justice our sword.\n\n**DETECTIVE MCCALLISTER:** (determined) We are a force to be reckoned with, united in purpose and resolve. The city's harmony will be preserved, no matter the cost.\n\n[Cut to: EXT. CITY SQUARE - CONTINUOUS]\n\n*As dawn breaks, the city awakens to a new reality, one where justice prevails and unity triumphs over deceit.*\n\n**NARRATOR:** And so, the city of Utah stands on the brink of a new era, where humans and dinosaurs coexist in harmony, thanks to the bravery and perseverance of Detective McCallister, Dr. Grant, and Mayor Johnson.\n\n[FADE OUT]\n\n**THE END**"
+              },
+              "outputMeta": {
+                "type": "aiPrompt",
+                "tokensIn": 1829,
+                "tokensOut": 573,
+                "costIn": 0.0009145,
+                "costOut": 0.0027435
+              }
+            },
+            {
+              "id": "episodeScriptOutput$$6",
+              "processed": true,
+              "output": {
+                "type": "markdown",
+                "content": "**Title: \"Jurassic Mailmen\"**  \n**Episode Number: 6**  \n**Episode Title: \"Reckoning\"**\n\n---\n\n*[Fade in]*\n\n*[The scene opens on the city of Utah in 1941, where humans and dinosaur citizens coexist, but a sense of unease lingers in the air. The city streets are bustling with activity, but there is an undercurrent of tension as the mystery of the missing dinosaur mailmen hangs heavy over the city.]*\n\n---\n\n*[Cut to interior of the Mayor's office, where Mayor Charlotte Johnson, Detective Sarah McCallister, and Dr. Henry Grant are gathered. The room is tense, but there is a sense of determination in their eyes.]*\n\n**Mayor Johnson:** In the heart of darkness, we find the light that guides us forward. Our choices define us, and today, we choose unity over discord, truth over deception. Together, we write the next chapter of Utah's history.\n\n*[As Mayor Johnson speaks, a montage of scenes plays out showing the unraveling of the mystery behind the missing dinosaur mailmen. Clues are pieced together, betrayals are exposed, and sacrifices are made as the truth comes to light.]*\n\n---\n\n*[Cut to Detective McCallister, Dr. Grant, and Mayor Johnson standing together, united in their resolve to bring justice to the city.]*\n\n**Dr. Grant:** The darkness may have clouded our vision, but only by facing our pasts can we shape a brighter future for all inhabitants of this city.\n\n*[The trio shares a determined look before heading out into the city, ready to confront the forces threatening their community.]*\n\n---\n\n*[Cut to a dramatic confrontation between our main characters and the powerful figures behind the conspiracy. Tensions are high as the fate of humans and dinosaurs in Utah hangs in the balance.]*\n\n**Detective McCallister:** We will not let fear and deception rule this city any longer. Justice will prevail, no matter the cost.\n\n*[The city watches on as the final showdown unfolds, revealing a web of deceit, betrayal, and sacrifice that shakes the very foundation of Utah.]*\n\n---\n\n*[Cut to the aftermath of the confrontation, where the dust has settled, and the characters are left to pick up the pieces.]*\n\n**Mayor Johnson:** We have faced our demons, made our choices, and now we must live with the consequences. But together, we can build a future where unity and justice reign.\n\n*[As the city begins to heal from the turmoil, our main characters share a moment of reflection, knowing that the road ahead will be paved with challenges and opportunities for growth.]*\n\n---\n\n*[Fade out]*\n\n**Episode End**"
+              },
+              "outputMeta": {
+                "type": "aiPrompt",
+                "tokensIn": 1837,
+                "tokensOut": 553,
+                "costIn": 0.0009185,
+                "costOut": 0.0027555
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "input": {
+        "id": "episodeScenes",
+        "outputType": "infer",
+        "dependencies": {
+          "showIdeaItem": {
+            "type": "reference",
+            "cellId": "showIdeaOutput"
+          },
+          "showCharactersItem": {
+            "type": "reference",
+            "cellId": "showCharactersOutput"
+          },
+          "showBibleItem": {
+            "type": "reference",
+            "cellId": "showBibleOutput"
+          },
+          "seasonItem": {
+            "type": "reference",
+            "cellId": "seasonOutput"
+          },
+          "episodeItem": {
+            "type": "reference",
+            "forEach": false,
+            "cellId": "episodeOutput"
+          },
+          "episodeScriptItem": {
+            "type": "reference",
+            "forEach": true,
+            "cellId": "episodeScriptOutput"
+          }
+        },
+        "input": {
+          "prompt": "Here are is the high level show concept for `{{showIdeaItem}}`, the characters `{{showCharactersItem}}`, the show bible `{{showBibleItem}}`, the season `{{seasonItem}}`, the episode `{{episodeItem}}`, and the episode script `{{episodeScriptItem}}`. Break the script down into scenes, and write out the shot list for each scene",
+          "model": "gpt-3.5-turbo-0125",
+          "type": "aiPrompt",
+          "schema": "z.array(z.object({\n                                sceneNumber: z.number({}),\n                                sceneShotList: z.string({})\n                            }))",
+          "systemPrompt": "You are a show creator writing out the episode scenes"
+        }
+      },
+      "output": {
+        "id": "episodeScenesOutput",
+        "processed": false
+      }
+    }
+  ]
+}

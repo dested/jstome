@@ -33,7 +33,7 @@ export const Home = () => {
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="flex space-x-4 mb-6">
-        <button
+        {/*<button
           className="btn btn-primary"
           onClick={async () => {
             if (notebook) await runKernel(notebook);
@@ -41,7 +41,7 @@ export const Home = () => {
         >
           <PlayIcon className="w-5 h-5 mr-2" />
           Run Kernel
-        </button>
+        </button>*/}
         <button className="btn btn-secondary" onClick={() => setEditSchema(!editSchema)}>
           <PencilIcon className="w-5 h-5 mr-2" />
           {editSchema ? 'Close Schema Editor' : 'Edit Schema'}
@@ -69,7 +69,24 @@ export const Home = () => {
 const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
   const outputMeta = notebook.cells.reduce(
     (acc, cell) => {
-      const meta = cell.output.outputMeta || {tokensIn: 0, tokensOut: 0, costIn: 0, costOut: 0};
+      if (!cell.outputDetails) {
+        return acc;
+      }
+      const meta = cell.outputDetails.hasMultipleOutputs
+        ? cell.outputDetails.outputs.reduce(
+            (acc, output) => {
+              if (!output.outputMeta) return acc;
+              return {
+                tokensIn: acc.tokensIn + output.outputMeta.tokensIn,
+                tokensOut: acc.tokensOut + output.outputMeta.tokensOut,
+                costIn: acc.costIn + output.outputMeta.costIn,
+                costOut: acc.costOut + output.outputMeta.costOut,
+              };
+            },
+            {tokensIn: 0, tokensOut: 0, costIn: 0, costOut: 0}
+          )
+        : cell.outputDetails.output.outputMeta ?? {tokensIn: 0, tokensOut: 0, costIn: 0, costOut: 0};
+
       return {
         tokensIn: acc.tokensIn + meta.tokensIn,
         tokensOut: acc.tokensOut + meta.tokensOut,
@@ -102,7 +119,7 @@ const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
           </div>
           <div className="space-y-6 mt-6">
             {notebook.cells.map((cell, index) => (
-              <CellContainer key={index} cell={cell} />
+              <CellContainer key={index} cell={cell} onSave={(e) => kernelRef.current?.updateCell(e.id, e)} />
             ))}
           </div>
         </NotebookKernelContext.Provider>
@@ -110,6 +127,8 @@ const NotebookViewer = ({notebook}: {notebook: Notebook}) => {
     </div>
   );
 };
+
+/*so you need to add that mobx thing for undo redo, you need to get dependeciy outputs working, and then maybet hats it lol*/
 
 const NotebookKernelContext = React.createContext<NotebookKernel | null>(null);
 
@@ -121,7 +140,7 @@ const NotebookHeader = ({metadata}: {metadata: Notebook['metadata']}) => {
   );
 };
 
-const CellContainer = ({cell}: {cell: Notebook['cells'][number]}) => {
+const CellContainer = ({cell, onSave}: {cell: Notebook['cells'][number]; onSave: (value: CellInput) => void}) => {
   const [isExpanded, setIsExpanded] = React.useState(true);
 
   return (
@@ -139,8 +158,23 @@ const CellContainer = ({cell}: {cell: Notebook['cells'][number]}) => {
       </div>
       {isExpanded && (
         <div className="p-4">
-          <CellInputComponent input={cell.input} />
-          <CellOutputComponent output={cell.output} />
+          <CellInputComponent
+            input={cell.input}
+            onSave={(e) => {
+              cell.input = e;
+              onSave(e);
+            }}
+          />
+          {cell.outputDetails &&
+            (cell.outputDetails.hasMultipleOutputs ? (
+              <div className="space-y-4">
+                {cell.outputDetails.outputs.map((output, index) => (
+                  <CellOutputComponent key={index} output={output} />
+                ))}
+              </div>
+            ) : (
+              <CellOutputComponent output={cell.outputDetails.output} />
+            ))}
         </div>
       )}
     </div>
@@ -181,14 +215,6 @@ export const CellTypeComponent = ({cellType}: {cellType: CellTypes}) => {
               ))}
             </tbody>
           </table>
-        </div>
-      );
-    case 'array':
-      return (
-        <div className="space-y-4">
-          {cellType.cells.map((value, index) => (
-            <CellOutputComponent key={index} output={value} />
-          ))}
         </div>
       );
     case 'markdown':
@@ -281,24 +307,6 @@ function CellTypeComponentEditable({
         );
       case 'table':
         return <p className="text-gray-500 italic">Not editable yet</p>;
-      case 'array':
-        return (
-          <div className="space-y-4">
-            {cellType.cells.map((value, index) =>
-              value.output ? (
-                <CellTypeComponentEditable
-                  key={index}
-                  cellType={value.output}
-                  onSave={(e) => {
-                    const newCells = [...cellType.cells];
-                    newCells[index] = {...newCells[index], output: e};
-                    onSave({type: 'array', cells: newCells});
-                  }}
-                />
-              ) : null
-            )}
-          </div>
-        );
       case 'markdown':
       case 'code':
         return (
@@ -410,12 +418,6 @@ function CellTypeComponentEditable({
                 cells: [[]],
               });
               break;
-            case 'array':
-              onSave({
-                type: 'array',
-                cells: [],
-              });
-              break;
             case 'markdown':
               onSave({
                 type: 'markdown',
@@ -457,7 +459,6 @@ function CellTypeComponentEditable({
         <option value="json">JSON</option>
         <option value="jsonArray">JSON Array</option>
         <option value="table">Table</option>
-        <option value="array">Array</option>
         <option value="markdown">Markdown</option>
         <option value="code">Code</option>
         <option value="aiPrompt">AI Prompt</option>
@@ -532,7 +533,7 @@ function ObjectEditor({object, onSave}: {object: string; onSave: (value: string)
   );
 }
 
-const CellInputComponent = ({input}: {input: CellInput}) => {
+const CellInputComponent = ({input, onSave}: {input: CellInput; onSave: (value: CellInput) => void}) => {
   const [editing, setEditing] = useState(false);
   const kernel = useContext(NotebookKernelContext);
 
@@ -559,6 +560,7 @@ const CellInputComponent = ({input}: {input: CellInput}) => {
           cellType={input.input}
           onSave={(e) => {
             input.input = e;
+            onSave(input);
           }}
         />
       )}
