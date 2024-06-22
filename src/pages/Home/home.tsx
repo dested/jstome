@@ -26,8 +26,9 @@ export const Home = () => {
   const [editSchema, setEditSchema] = useState(false);
 
   useEffect(() => {
-    // const nb = localStorage.getItem('notebook') ? JSON.parse(localStorage.getItem('notebook')!) : example2();
-    setNotebook(dino as Notebook);
+    const nb = localStorage.getItem('notebook') ? JSON.parse(localStorage.getItem('notebook')!) : example2();
+    setNotebook(nb as Notebook);
+    // setNotebook(dino as Notebook);
   }, []);
 
   useEffect(() => {
@@ -190,7 +191,7 @@ const CellContainer = ({
 }) => {
   const kernel = useContext(NotebookKernelContext);
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const [showOutputs, setShowOutputs] = useState(true);
+  const [showOutputs, setShowOutputs] = useState(false);
   return (
     <div className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div
@@ -225,6 +226,20 @@ const CellContainer = ({
             <PencilIcon className="w-5 h-5 mr-2" />
             {showOutputs ? 'Hide Outputs' : 'Show Outputs'}
           </button>
+          {cell.outputDetails && (
+            <button
+              onClick={() => {
+                const should = confirm('Are you sure you want to clear the outputs?');
+                if (should) {
+                  kernel?.clearOutputs(cell.input.id);
+                }
+              }}
+              className="btn btn-outline btn-secondary mt-4"
+            >
+              <PencilIcon className="w-5 h-5 mr-2" />
+              Clear outputs
+            </button>
+          )}
           {showOutputs ? (
             <>
               {cell.outputDetails &&
@@ -532,6 +547,29 @@ function CellTypeComponentEditable({
                 <option value="">none</option>
                 <option value="dall-e-3">dall-e-3</option>
                 {/* Add more model options as needed */}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Resize</label>
+              <select
+                value={cellType.model}
+                onChange={(e) => {
+                  const strings = e.target.value.split('x');
+                  if (strings.length !== 2) return onSave({...cellType, resize: undefined});
+                  return onSave({
+                    ...cellType,
+                    resize: {
+                      width: parseInt(strings[0]),
+                      height: parseInt(strings[1]),
+                    },
+                  });
+                }}
+                className="select select-bordered w-full"
+              >
+                <option value="">none</option>
+                <option value="128x128">128x128</option>
+                <option value="256x256">256x256</option>
+                <option value="512x512">512x512</option>
               </select>
             </div>
           </div>

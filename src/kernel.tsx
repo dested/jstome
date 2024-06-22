@@ -30,6 +30,7 @@ ai will:
     metadata: {
       title: 'buildShow',
     },
+    bigAssets: [],
     cells: [
       {
         input: {
@@ -315,6 +316,7 @@ function example1() {
     metadata: {
       title: 'buildMeshGradient',
     },
+    bigAssets: [],
     cells: [
       {
         input: {
@@ -371,6 +373,11 @@ export type NotebookCell = {
 };
 export type Notebook = {
   cells: NotebookCell[];
+  bigAssets: Array<{
+    assetId: string;
+    type: 'image';
+    content: string;
+  }>;
   metadata: {
     title: string;
   };
@@ -436,6 +443,7 @@ export type CellTypes =
       type: 'aiImagePrompt';
       prompt: string;
       model: string;
+      resize?: {width: number; height: number};
     }
   | {
       type: 'markdown';
@@ -545,10 +553,36 @@ async function batchPromiseAll<T, T2>(
   return results;
 }
 
+async function resizeImage(base64Image: string, newWidth: number, newHeight: number) {
+  const img = new Image();
+  img.src = base64Image;
+  await new Promise((r) => (img.onload = r));
+  const canvas = document.createElement('canvas');
+  canvas.width = newWidth;
+  canvas.height = newHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('No context');
+  }
+  ctx.drawImage(img, 0, 0, newWidth, newHeight);
+  return canvas.toDataURL('image/jpeg');
+}
+
 export class NotebookKernel {
   onSave: (e: Notebook) => void = () => {
     return;
   };
+  clearOutputs(cellId: string) {
+    if (!this.notebook) {
+      throw new Error('Notebook not loaded');
+    }
+    const cell = this.notebook.cells.find((x) => x.input.id === cellId);
+    if (!cell) {
+      throw new Error('Cell not found');
+    }
+    cell.outputDetails = undefined;
+    this.saveNotebook();
+  }
   addCell(name: string) {
     if (!this.notebook) {
       throw new Error('Notebook not loaded');
@@ -846,7 +880,6 @@ export class NotebookKernel {
           outputReferences,
         };
       case 'code': {
-        debugger;
         const result = await runCode(input.input.content, dependencies);
         return {
           id: id,
@@ -898,6 +931,12 @@ export class NotebookKernel {
             outputReferences,
           };
         }
+        debugger;
+        if (input.input.resize) {
+          const resized = await resizeImage(result.result, input.input.resize.width, input.input.resize.height);
+          result.result = resized;
+        }
+
         return {
           id: id,
           processed: true,
@@ -1318,7 +1357,10 @@ async function runAI(input: {
   };
 }
 
-async function runAIImage(input: {prompt: string; model: string}): Promise<
+async function runAIImage(
+  input: {prompt: string; model: string},
+  retryCount = 0
+): Promise<
   | {
       result: string;
       tokensIn: number;
@@ -1328,6 +1370,11 @@ async function runAIImage(input: {prompt: string; model: string}): Promise<
     }
   | CellOutputError
 > {
+  if (retryCount > 3) {
+    return {
+      error: 'Failed to generate',
+    };
+  }
   const client = new OpenAI({fetch: fetch, apiKey: import.meta.env.VITE_OPENAI_KEY, dangerouslyAllowBrowser: true});
   try {
     const result = await client.images.generate({
@@ -1340,7 +1387,7 @@ async function runAIImage(input: {prompt: string; model: string}): Promise<
       prompt: input.prompt,
     });
     return {
-      result: result.data[0].b64_json ?? '',
+      result: result.data[0].b64_json ? `data:image/png;base64,${result.data[0].b64_json}` : '',
       tokensIn: 0,
       tokensOut: 0,
       costIn: 0,
@@ -1350,9 +1397,8 @@ async function runAIImage(input: {prompt: string; model: string}): Promise<
     assertType<Error & {code: string}>(ex);
     // is 429
     if (ex.code === 'rate_limit_exceeded') {
-      return {
-        error: 'Rate limit exceeded',
-      };
+      await new Promise((r) => setTimeout(r, retryCount * 60 * 1000));
+      return runAIImage(input, retryCount + 1);
     }
 
     console.log(ex);
