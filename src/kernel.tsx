@@ -1,6 +1,7 @@
 import {zodToJsonSchema} from 'zod-to-json-schema';
 import OpenAI from 'openai';
 import {z, ZodType} from 'zod';
+import {RunUtils, RunUtilsImage} from '@/RunUtils.ts';
 
 function zodToString(param: () => any) {
   return param.toString().substring(param.toString().indexOf('()=>') + 4);
@@ -409,7 +410,7 @@ export type CellOutput = {
   id: string; // overwritable
   processed: boolean;
   output?: CellTypes;
-  outputReferences: {[key: string]: string};
+  outputReferences: {[key: string]: CellTypes | undefined};
   error?: CellOutputError;
   outputMeta?: {
     type: 'aiPrompt';
@@ -467,7 +468,7 @@ export type CellTypes =
     }
   | {
       type: 'array';
-      values: CellTypes[];
+      values: (CellTypes | undefined)[];
     }
   | {
       type: 'table';
@@ -475,7 +476,7 @@ export type CellTypes =
     };
 
 export type CellDependencyValues = {[p: string]: CellTypes | undefined};
-export type CellDependencyArrayValues = {[p: string]: CellTypes[] | undefined};
+export type CellDependencyArrayValues = {[p: string]: (CellTypes | undefined)[] | undefined};
 
 export function lookupInObject(obj: any, key: string): CellTypes | undefined {
   const keys = key.split('.');
@@ -942,7 +943,8 @@ export class NotebookKernel {
           outputReferences,
         };
       case 'code': {
-        const result = await runCode(input.input.content, dependencies);
+        let result = await runCode(input.input.content, dependencies);
+        result = await postProcessResult(result);
         return {
           id: id,
           processed: true,
@@ -1156,10 +1158,9 @@ export class NotebookKernel {
 
             if (cell.outputDetails.hasMultipleOutputs) {
               if (dependency.forEach) {
-                dependencyArrays[dependencyKey] = cell.outputDetails.outputs.map((o) => ({
-                  type: 'markdown' as const,
-                  content: o.outputReferences[dependency.field],
-                }));
+                dependencyArrays[dependencyKey] = cell.outputDetails.outputs.map(
+                  (o) => o.outputReferences[dependency.field]
+                );
                 foreachDetails = {
                   cellId: dependency.cellId,
                   dependencyKey: dependencyKey,
@@ -1168,30 +1169,19 @@ export class NotebookKernel {
               } else {
                 dependencies[dependencyKey] = {
                   type: 'array',
-                  values: cell.outputDetails.outputs.map((x) => ({
-                    type: 'markdown',
-                    content: x.outputReferences[dependency.field],
-                  })),
+                  values: cell.outputDetails.outputs.map((x) => x.outputReferences[dependency.field]),
                 };
               }
             } else {
               if (dependency.forEach) {
-                dependencyArrays[dependencyKey] = [
-                  {
-                    type: 'markdown',
-                    content: cell.outputDetails.output!.outputReferences[dependency.field],
-                  },
-                ];
+                dependencyArrays[dependencyKey] = [cell.outputDetails.output!.outputReferences[dependency.field]];
                 foreachDetails = {
                   cellId: dependency.cellId,
                   dependencyKey: dependencyKey,
                   dependencies: {},
                 };
               } else {
-                dependencies[dependencyKey] = {
-                  type: 'markdown',
-                  content: cell.outputDetails.output!.outputReferences[dependency.field], // not right
-                };
+                dependencies[dependencyKey] = cell.outputDetails.output!.outputReferences[dependency.field];
               }
             }
             break;
@@ -1272,12 +1262,23 @@ async function runCode(content: string, dependencies: CellDependencyValues | und
       args.push({key: key, value: parseCell(dependency)});
     }
   }
-  const result = new Function(...args.map((x) => x.key), content + '\n\nreturn run;')(...args.map((x) => x.value));
+
+  const result = new Function(...args.map((x) => x.key), 'Utils', content + '\n\nreturn run;')(
+    ...args.map((x) => x.value),
+    RunUtils.instance
+  );
 
   return result();
 }
+
 function inferOutput(result: any): CellTypes {
   if (typeof result === 'string') {
+    if (result.startsWith('data:image')) {
+      return {
+        type: 'image',
+        content: result,
+      };
+    }
     return {
       type: 'markdown',
       content: result,
@@ -1470,10 +1471,10 @@ async function runAIImage(
 }
 
 function evaluateDependencies(dependencies: CellDependencyValues) {
-  const evaluated: {[p: string]: any} = {};
+  const evaluated: {[p: string]: CellTypes | undefined} = {};
   for (const key in dependencies) {
     const dependency = dependencies[key];
-    evaluated[key] = JSON.stringify(parseCell(dependency)); // not right
+    evaluated[key] = dependency;
   }
   return evaluated;
 }
@@ -1487,7 +1488,7 @@ function cellToString(cell: CellTypes | undefined): string {
     case 'json':
       return cell.value;
     case 'array':
-      return JSON.stringify(cell.values);
+      return cell.values.map((x) => cellToString(x)).join('\n');
     case 'number':
       return cell.value.toString();
     case 'image':
@@ -1618,4 +1619,14 @@ function unique<T>(array: T[], field: keyof T): T[] {
 }
 function assertType<T>(x: any): asserts x is T {
   return;
+}
+
+async function postProcessResult(result: any) {
+  if (result instanceof Promise) {
+    await result;
+  }
+  if (result instanceof RunUtilsImage) {
+    result = await result.process();
+  }
+  return result;
 }

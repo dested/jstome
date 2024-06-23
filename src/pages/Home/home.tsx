@@ -1,10 +1,12 @@
+import 'highlight.js/styles/github-dark.css';
+import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
 import ldb from '../../utils/localdata.js';
 import {create} from 'zustand';
 import {produce} from 'immer';
 import Markdown from 'react-markdown';
-import React, {useContext, useEffect, useState} from 'react';
+import React, {Fragment, useContext, useEffect, useState} from 'react';
 import {ChevronDownIcon, ChevronRightIcon} from '@heroicons/react/24/solid';
-import dino from '../../json/dino.json';
 import {
   CellDependencies,
   CellDependencyValues,
@@ -21,6 +23,8 @@ import {
 import Editor from '@monaco-editor/react';
 import {PencilIcon, PlayIcon} from '@heroicons/react/20/solid';
 import clsx from 'clsx';
+import {DebounceUtils} from '@/utils/debounceUtils.ts';
+hljs.registerLanguage('javascript', javascript);
 
 export const Home = () => {
   const [notebook, setNotebook] = useState<Notebook | undefined>();
@@ -44,14 +48,18 @@ export const Home = () => {
 
   useEffect(() => {
     if (notebook) {
-      console.log('Saving notebook');
       // console.log(JSON.stringify(notebook, null, 2));
-      try {
-        ldb.set('notebook', JSON.stringify(notebook));
-        // localStorage.setItem('notebook', JSON.stringify(notebook));
-      } catch (e) {
-        console.error(e);
-      }
+      DebounceUtils.debounce('notebook', 1000, () => {
+        try {
+          console.log('Saving notebook');
+          const s = JSON.stringify(notebook);
+          console.log((s.length / 1024 / 1024).toFixed(5) + ' MB');
+          ldb.set('notebook', s);
+          // localStorage.setItem('notebook', JSON.stringify(notebook));
+        } catch (e) {
+          console.error(e);
+        }
+      });
     }
   }, [notebook]);
 
@@ -81,11 +89,13 @@ export const Home = () => {
             defaultLanguage="json"
             defaultValue={JSON.stringify(notebook, null, 2)}
             onChange={(e) => {
-              try {
-                setNotebook(JSON.parse(e!));
-              } catch (e) {
-                console.error(e);
-              }
+              DebounceUtils.debounce('editCode', 1000, () => {
+                try {
+                  setNotebook(JSON.parse(e!));
+                } catch (e) {
+                  console.error(e);
+                }
+              });
             }}
             className="border border-gray-300 rounded-lg shadow-sm"
           />
@@ -281,8 +291,8 @@ const CellContainer = ({
                 (cell.outputDetails.hasMultipleOutputs ? (
                   <div className="space-y-4">
                     {cell.outputDetails.outputs.map((output, index) => (
-                      <>
-                        <CellOutputComponent key={index} outputIndex={index} output={output} input={cell.input} />
+                      <Fragment key={index}>
+                        <CellOutputComponent outputIndex={index} output={output} input={cell.input} />
                         <button
                           onClick={async () => {
                             await kernel?.rerunCellOutput(cell.input.id, index, true);
@@ -292,7 +302,7 @@ const CellContainer = ({
                           <PlayIcon className="w-5 h-5 mr-2" />
                           Re-run output
                         </button>
-                      </>
+                      </Fragment>
                     ))}
                   </div>
                 ) : (
@@ -312,7 +322,7 @@ export const CellTypeComponent = ({
   cellType,
   dependencies,
 }: {
-  cellType: CellTypes;
+  cellType: CellTypes | undefined;
   dependencies: CellDependencies | undefined;
 }) => {
   const kernel = useContext(NotebookKernelContext);
@@ -325,6 +335,7 @@ export const CellTypeComponent = ({
   }, [dependencies, kernel, kernel?.notebook]);
   const [showPrompt, setShowPrompt] = useState(true);
 
+  if (!cellType) return <>Undefined</>;
   switch (cellType.type) {
     case 'number':
       return <p className="text-lg font-semibold text-gray-700">{cellType.value}</p>;
@@ -369,7 +380,12 @@ export const CellTypeComponent = ({
     case 'code':
       return (
         <pre className="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto">
-          <code>{cellType.content}</code>
+          <code
+            className={'theme-github-dark'}
+            dangerouslySetInnerHTML={{
+              __html: hljs.highlight(cellType.content, {language: 'javascript'}).value,
+            }}
+          ></code>
         </pre>
       );
     case 'aiPrompt':
@@ -498,7 +514,11 @@ function CellTypeComponentEditable({
             height="50vh"
             defaultLanguage={cellType.type === 'markdown' ? 'markdown' : 'javascript'}
             defaultValue={cellType.content}
-            onChange={(e) => onSave({type: cellType.type, content: e || ''})}
+            onChange={(e) => {
+              DebounceUtils.debounce('editCode', 1000, () => {
+                onSave({type: cellType.type, content: e || ''});
+              });
+            }}
             className="border border-gray-300 rounded-lg"
           />
         );
@@ -512,7 +532,11 @@ function CellTypeComponentEditable({
                 height="20vh"
                 defaultLanguage="markdown"
                 defaultValue={cellType.prompt}
-                onChange={(e) => onSave({...cellType, prompt: e || ''})}
+                onChange={(e) => {
+                  DebounceUtils.debounce('editCode', 1000, () => {
+                    onSave({...cellType, prompt: e || ''});
+                  });
+                }}
                 className="border border-gray-300 rounded-lg"
               />
             </div>
@@ -562,7 +586,11 @@ function CellTypeComponentEditable({
                 height="20vh"
                 defaultLanguage="markdown"
                 defaultValue={cellType.prompt}
-                onChange={(e) => onSave({...cellType, prompt: e || ''})}
+                onChange={(e) => {
+                  DebounceUtils.debounce('editCode', 1000, () => {
+                    onSave({...cellType, prompt: e || ''});
+                  });
+                }}
                 className="border border-gray-300 rounded-lg"
               />
             </div>
@@ -823,7 +851,7 @@ const CellInputComponent = ({cellInput, onSave}: {cellInput: CellInput; onSave: 
               <ul className="list-disc list-inside space-y-1">
                 {Object.entries(cellInput.dependencies).map(([dependencyKey, dependency], index) => (
                   <li key={index} className="text-blue-600">
-                    <strong>{dependencyKey}:</strong> {dependency.cellId} ({dependency.forEach ? 'ForEach' : 'Single'})
+                    <strong>{dependencyKey}:</strong> {dependency.cellId} ({dependency.forEach ? 'Iterate' : 'Single'})
                     ({dependency.type}) {'field' in dependency && `(${dependency.field})`}
                   </li>
                 ))}
@@ -902,12 +930,13 @@ const CellInputComponent = ({cellInput, onSave}: {cellInput: CellInput; onSave: 
                       }}
                       className="select select-bordered flex-1"
                     >
+                      <option value="">Select Field</option>
                       {kernel?.buildFieldsFromOutputReference(dependency.cellId, cellInput.id).map((cell) => {
                         return <option value={cell.id}>{cell.id}</option>;
                       })}
                     </select>
                   )}
-                  <label>ForEach</label>
+                  <label>Iterate</label>
                   <input
                     type={'checkbox'}
                     checked={dependency.forEach}
@@ -1029,7 +1058,7 @@ const CellOutputComponent = ({
                   <ul className="list-disc list-inside space-y-1">
                     {Object.entries(output.outputReferences).map(([key, value], index) => (
                       <li key={index} className="text-blue-600">
-                        <strong>{key}:</strong> <ObjectViewer object={JSON.parse(value)} />
+                        <strong>{key}:</strong> {value ? <ObjectViewer object={value} /> : 'No output'}
                       </li>
                     ))}
                   </ul>
