@@ -5,7 +5,7 @@ import ldb from '../../utils/localdata.js';
 import {create} from 'zustand';
 import {produce} from 'immer';
 import Markdown from 'react-markdown';
-import React, {Fragment, useContext, useEffect, useState} from 'react';
+import React, {Fragment, useCallback, useContext, useEffect, useState} from 'react';
 import {ChevronDownIcon, ChevronRightIcon} from '@heroicons/react/24/solid';
 import {
   CellDependencies,
@@ -429,7 +429,7 @@ export const CellTypeComponent = ({
     case 'webpage':
       return <iframe src={cellType.content} className="w-full h-64 border-0 rounded-lg shadow-md" />;
     case 'json':
-      return <ObjectViewer object={JSON.parse(cellType.value)} />;
+      return <JsonViewer json={JSON.parse(cellType.value)} />;
     case 'array':
       return (
         <div className="space-y-4 pl-4">
@@ -581,7 +581,12 @@ function CellTypeComponentEditable({
       case 'webpage':
         return <p className="text-gray-500 italic">Not editable</p>;
       case 'json':
-        return <ObjectEditor object={cellType.value} onSave={(e) => onSave({type: 'json', value: e})} />;
+        return (
+          <EditableJsonViewer
+            json={JSON.parse(cellType.value)}
+            onUpdate={(e) => onSave({type: 'json', value: JSON.stringify(e)})}
+          />
+        );
       case 'array':
         return (
           <div className="space-y-4 pl-4">
@@ -829,111 +834,9 @@ function CellTypeComponentEditable({
         <option value="aiPrompt">AI Prompt</option>
         <option value="aiImagePrompt">AI Image Prompt</option>
       </select>
-      {renderCellTypes()}
-    </div>
-  );
-}
-
-function ObjectViewer({object}: {object: Record<string, any>}) {
-  const kernel = useContext(NotebookKernelContext);
-  const [viewAsJSON, setViewAsJSON] = useState(false);
-  const [collapse, setCollapse] = useState(false);
-  return (
-    <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
-      <button onClick={() => setViewAsJSON(!viewAsJSON)} className="btn btn-outline btn-primary mb-4">
-        {viewAsJSON ? 'View As Table' : 'View As JSON'}
-      </button>
-      <button onClick={() => setCollapse(!collapse)} className="btn btn-outline btn-primary mb-4">
-        {!collapse ? 'Collapse' : 'Expand'}
-      </button>
-      {viewAsJSON ? (
-        <pre>{JSON.stringify(object, null, 2)}</pre>
-      ) : (
-        !collapse && (
-          <table className="min-w-full divide-y divide-gray-200">
-            <tbody className="divide-y divide-gray-200">
-              {Object.entries(object).map(([key, value], index) => (
-                <tr key={index}>
-                  <td className="py-2 pr-4 font-medium text-gray-900" width={'20%'}>
-                    {key}
-                  </td>
-                  <td className="py-2 pl-4 text-gray-500">
-                    {typeof value === 'object' ? (
-                      <ObjectViewer object={value} />
-                    ) : typeof value === 'string' ? (
-                      value.startsWith('asset:') ? (
-                        <img src={getImagePath(value, kernel?.notebook)} alt="Image" className="max-w-full h-auto" />
-                      ) : value.startsWith('data:') ? (
-                        <img src={value} alt="Image" className="max-w-full h-auto" />
-                      ) : (
-                        <Markdown className={'prose'}>{String(value)}</Markdown>
-                      )
-                    ) : (
-                      String(value)
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )
-      )}
-    </div>
-  );
-}
-
-function ObjectEditor({object, onSave}: {object: string; onSave: (value: string) => void}) {
-  const obj = JSON.parse(object);
-  return (
-    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-      {Object.entries(obj).map(([key, value], index) => (
-        <div key={index} className="flex space-x-2">
-          <input
-            type="text"
-            value={key}
-            onChange={(e) => {
-              const newObj = {...obj};
-              delete newObj[key];
-              newObj[e.target.value] = value;
-              onSave(JSON.stringify(newObj));
-            }}
-            className="input input-bordered flex-1"
-          />
-          {typeof value === 'string' || typeof value === 'number' ? (
-            <input
-              type={typeof value === 'number' ? 'number' : 'text'}
-              value={value as string | number}
-              onChange={(e) => {
-                const newObj = {...obj};
-                newObj[key] = e.target.value;
-                onSave(JSON.stringify(newObj));
-              }}
-              className="input input-bordered flex-1"
-            />
-          ) : typeof value === 'object' ? (
-            <ObjectEditor
-              object={JSON.stringify(value)}
-              onSave={(e) => {
-                const newObj = {...obj};
-                newObj[key] = JSON.parse(e);
-                onSave(JSON.stringify(newObj));
-              }}
-            />
-          ) : (
-            <span className="text-red-500">Unsupported edit</span>
-          )}
-        </div>
-      ))}
-      <button
-        onClick={() => {
-          const newObj = {...obj};
-          newObj[''] = '';
-          onSave(JSON.stringify(newObj));
-        }}
-        className="btn btn-outline btn-primary"
-      >
-        Add Field
-      </button>
+      <div key={cellType?.type} className="space-y-4">
+        {renderCellTypes()}
+      </div>
     </div>
   );
 }
@@ -1162,7 +1065,7 @@ const CellOutputComponent = ({
                   <ul className="list-disc list-inside space-y-1">
                     {Object.entries(output.outputReferences).map(([key, value], index) => (
                       <li key={index} className="text-blue-600">
-                        <strong>{key}:</strong> {value ? <ObjectViewer object={value} /> : 'No output'}
+                        <strong>{key}:</strong> {value ? <JsonViewer json={value} /> : 'No output'}
                       </li>
                     ))}
                   </ul>
@@ -1216,4 +1119,207 @@ function useEffectAsync(effect: () => Promise<void>, deps: React.DependencyList)
   React.useEffect(() => {
     effect();
   }, deps);
+}
+
+function JsonViewer({json}: {json: any}) {
+  const [expandedKeys, setExpandedKeys] = useState(new Set());
+
+  const toggleExpand = (key: string) => {
+    const newExpandedKeys = new Set(expandedKeys);
+    if (newExpandedKeys.has(key)) {
+      newExpandedKeys.delete(key);
+    } else {
+      newExpandedKeys.add(key);
+    }
+    setExpandedKeys(newExpandedKeys);
+  };
+
+  const renderValue = (value: any, key = '', level = 0) => {
+    if (typeof value === 'object' && value !== null) {
+      const isArray = Array.isArray(value);
+      const brackets = isArray ? ['[', ']'] : ['{', '}'];
+      const isExpanded = expandedKeys.has(key);
+
+      return (
+        <div className="ml-4">
+          <span className="cursor-pointer text-blue-600 hover:text-blue-800" onClick={() => toggleExpand(key)}>
+            {isExpanded ? '▼' : '▶'} {key}
+          </span>
+          {isExpanded && (
+            <div className="ml-4">
+              {Object.entries(value).map(([k, v], index) => (
+                <div key={k}>{renderValue(v, `${key}.${k}`, level + 1)}</div>
+              ))}
+            </div>
+          )}
+          {!isExpanded && (
+            <span>
+              {brackets[0]}...{brackets[1]}
+            </span>
+          )}
+        </div>
+      );
+    } else {
+      return (
+        <div className="ml-4">
+          <span className="text-gray-600">{key}: </span>
+          <span className={`${typeof value === 'string' ? 'text-green-600' : 'text-purple-600'}`}>
+            {JSON.stringify(value)}
+          </span>
+        </div>
+      );
+    }
+  };
+
+  try {
+    return <div className="font-mono text-sm">{renderValue(json)}</div>;
+  } catch (error) {
+    return <pre className="text-sm overflow-x-auto">{json}</pre>;
+  }
+}
+
+function EditableJsonViewer({json, onUpdate}: {json: any; onUpdate: (json: any) => void}) {
+  const [expandedKeys, setExpandedKeys] = useState(new Set<string>());
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+
+  const toggleExpand = useCallback((key: string) => {
+    setExpandedKeys((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const startEditing = useCallback((key: string) => {
+    setEditingKey(key);
+  }, []);
+
+  const saveEdit = useCallback(
+    (path: string, newValue: string) => {
+      try {
+        const pathArray = path.split('.');
+        const newJson = JSON.parse(JSON.stringify(json));
+        let current = newJson;
+        for (let i = 0; i < pathArray.length - 1; i++) {
+          current = current[pathArray[i]];
+        }
+        current[pathArray[pathArray.length - 1]] = JSON.parse(newValue);
+        onUpdate(newJson);
+        setEditingKey(null);
+      } catch (error) {
+        alert('Invalid JSON. Please check your input.');
+      }
+    },
+    [json, onUpdate]
+  );
+
+  const renderEditableValue = useCallback(
+    (value: any, key = '', path = '') => {
+      const currentPath = path ? `${path}.${key}` : key;
+      const isEditing = editingKey === currentPath;
+
+      if (typeof value === 'object' && value !== null) {
+        const isArray = Array.isArray(value);
+        const brackets = isArray ? ['[', ']'] : ['{', '}'];
+        const isExpanded = expandedKeys.has(currentPath);
+
+        return (
+          <div className="ml-4">
+            <span
+              className="cursor-pointer text-blue-600 hover:text-blue-800"
+              onClick={() => toggleExpand(currentPath)}
+            >
+              {isExpanded ? '▼' : '▶'} {key}
+            </span>
+            {isEditing ? (
+              <EditableValue
+                value={JSON.stringify(value, null, 2)}
+                onSave={(newValue) => saveEdit(currentPath, newValue)}
+                onCancel={() => setEditingKey(null)}
+              />
+            ) : (
+              <>
+                <button onClick={() => startEditing(currentPath)} className="text-blue-600 hover:text-blue-800 ml-2">
+                  Edit
+                </button>
+                {isExpanded && (
+                  <div className="ml-4">
+                    {Object.entries(value).map(([k, v]) => (
+                      <div key={k}>{renderEditableValue(v, k, currentPath)}</div>
+                    ))}
+                  </div>
+                )}
+                {!isExpanded && (
+                  <span>
+                    {brackets[0]}...{brackets[1]}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        );
+      } else {
+        return (
+          <div className="ml-4 flex items-center">
+            <span className="text-gray-600">{key}: </span>
+            {isEditing ? (
+              <EditableValue
+                value={JSON.stringify(value)}
+                onSave={(newValue) => saveEdit(currentPath, newValue)}
+                onCancel={() => setEditingKey(null)}
+              />
+            ) : (
+              <>
+                <span className={`${typeof value === 'string' ? 'text-green-600' : 'text-purple-600'} mr-2`}>
+                  {JSON.stringify(value)}
+                </span>
+                <button onClick={() => startEditing(currentPath)} className="text-blue-600 hover:text-blue-800">
+                  Edit
+                </button>
+              </>
+            )}
+          </div>
+        );
+      }
+    },
+    [expandedKeys, editingKey, toggleExpand, startEditing, saveEdit]
+  );
+
+  return <div className="font-mono text-sm">{renderEditableValue(json)}</div>;
+}
+
+function EditableValue({
+  value,
+  onSave,
+  onCancel,
+}: {
+  value: string;
+  onSave: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const [editValue, setEditValue] = useState(value);
+
+  return (
+    <>
+      <textarea
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        className="border border-gray-300 rounded px-2 py-1 mr-2 w-full"
+        rows={editValue.split('\n').length}
+      />
+      <button
+        onClick={() => onSave(editValue)}
+        className="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
+      >
+        Save
+      </button>
+      <button onClick={onCancel} className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 ml-2">
+        Cancel
+      </button>
+    </>
+  );
 }

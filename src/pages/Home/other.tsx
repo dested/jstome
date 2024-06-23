@@ -300,64 +300,6 @@ function Cell({cell, index, moveCell, removeCell, updateCell, cells}) {
 
 export default Other;
 
-function JsonViewer({json}) {
-  const [expandedKeys, setExpandedKeys] = useState(new Set());
-
-  const toggleExpand = (key) => {
-    const newExpandedKeys = new Set(expandedKeys);
-    if (newExpandedKeys.has(key)) {
-      newExpandedKeys.delete(key);
-    } else {
-      newExpandedKeys.add(key);
-    }
-    setExpandedKeys(newExpandedKeys);
-  };
-
-  const renderValue = (value, key = '', level = 0) => {
-    if (typeof value === 'object' && value !== null) {
-      const isArray = Array.isArray(value);
-      const brackets = isArray ? ['[', ']'] : ['{', '}'];
-      const isExpanded = expandedKeys.has(key);
-
-      return (
-        <div className="ml-4">
-          <span className="cursor-pointer text-blue-600 hover:text-blue-800" onClick={() => toggleExpand(key)}>
-            {isExpanded ? '▼' : '▶'} {key}
-          </span>
-          {isExpanded && (
-            <div className="ml-4">
-              {Object.entries(value).map(([k, v], index) => (
-                <div key={k}>{renderValue(v, `${key}.${k}`, level + 1)}</div>
-              ))}
-            </div>
-          )}
-          {!isExpanded && (
-            <span>
-              {brackets[0]}...{brackets[1]}
-            </span>
-          )}
-        </div>
-      );
-    } else {
-      return (
-        <div className="ml-4">
-          <span className="text-gray-600">{key}: </span>
-          <span className={`${typeof value === 'string' ? 'text-green-600' : 'text-purple-600'}`}>
-            {JSON.stringify(value)}
-          </span>
-        </div>
-      );
-    }
-  };
-
-  try {
-    const parsedJson = typeof json === 'string' ? JSON.parse(json) : json;
-    return <div className="font-mono text-sm">{renderValue(parsedJson)}</div>;
-  } catch (error) {
-    return <pre className="text-sm overflow-x-auto">{json}</pre>;
-  }
-}
-
 function EditableJsonViewer({json, onUpdate}) {
   const [expandedKeys, setExpandedKeys] = useState(new Set());
   const [editingKey, setEditingKey] = useState(null);

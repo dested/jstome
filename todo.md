@@ -11,3 +11,5 @@ run all outputs
 dependency tracking/rerunning
 z.schema intellisense
 immer, fix saving
+rendering compoennts, react, html, etc
+detecting arrays from the ai output markdown and using it like a regular array
