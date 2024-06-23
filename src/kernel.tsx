@@ -553,6 +553,12 @@ async function batchPromiseAll<T, T2>(
   return results;
 }
 
+function* peel<T, T2>(count: number, array: T[]): Generator<T[]> {
+  for (let i = 0; i < array.length; i += count) {
+    yield array.slice(i, i + count);
+  }
+}
+
 async function resizeImage(base64Image: string, newWidth: number, newHeight: number) {
   const img = new Image();
   img.src = base64Image;
@@ -683,6 +689,26 @@ export class NotebookKernel {
     this.notebook.cells = this.notebook.cells.filter((x) => x.input.id !== cellId);
     this.saveNotebook();
   }
+  moveCell(cellId: string, direction: 'up' | 'down') {
+    if (!this.notebook) {
+      throw new Error('Notebook not loaded');
+    }
+    const index = this.notebook.cells.findIndex((x) => x.input.id === cellId);
+    if (index === -1) {
+      throw new Error('Cell not found');
+    }
+    if (direction === 'up' && index > 0) {
+      const temp = this.notebook.cells[index - 1];
+      this.notebook.cells[index - 1] = this.notebook.cells[index];
+      this.notebook.cells[index] = temp;
+    }
+    if (direction === 'down' && index < this.notebook.cells.length - 1) {
+      const temp = this.notebook.cells[index + 1];
+      this.notebook.cells[index + 1] = this.notebook.cells[index];
+      this.notebook.cells[index] = temp;
+    }
+    this.saveNotebook();
+  }
   cellHasOutput(cellId: string) {
     if (!this.notebook) {
       return false;
@@ -708,10 +734,15 @@ export class NotebookKernel {
       if (this.cellIsProcessed(cellElement) && !force) {
         return;
       }
-      const outputDetails = await this.runCellInput(cellElement.input);
-      cellElement.outputDetails = outputDetails;
+      await this.runCellInput(cellElement.input, -1, (outputDetails) => {
+        const cellElement = this.notebook!.cells.find((x) => x.input.id === cellId);
+        if (!cellElement) {
+          throw new Error('Cell not found');
+        }
+        cellElement.outputDetails = outputDetails;
+        this.saveNotebook();
+      });
     }
-    this.saveNotebook();
   }
 
   async rerunCellOutput(cellId: string, outputIndex: number, force = false) {
@@ -735,12 +766,20 @@ export class NotebookKernel {
       };
       this.saveNotebook();
 
-      const outputDetails = await this.runCellInput(cellElement.input, outputIndex);
-      if (outputDetails.hasMultipleOutputs) {
-        throw new Error('Output should not have multiple outputs');
-      }
-      cellElement.outputDetails.outputs[outputIndex] = outputDetails.output;
-      this.saveNotebook();
+      await this.runCellInput(cellElement.input, outputIndex, (outputDetails) => {
+        if (outputDetails.hasMultipleOutputs) {
+          throw new Error('Output should not have multiple outputs');
+        }
+        const cellElement = this.notebook!.cells.find((x) => x.input.id === cellId);
+        if (!cellElement) {
+          throw new Error('Cell not found');
+        }
+        if (!cellElement.outputDetails || !cellElement.outputDetails.hasMultipleOutputs) {
+          return;
+        }
+        cellElement.outputDetails!.outputs[outputIndex] = outputDetails.output;
+        this.saveNotebook();
+      });
     }
   }
 
@@ -764,38 +803,61 @@ export class NotebookKernel {
     }
   }
 
-  private async runCellInput(input: CellInput, onlyOutputIndex = -1): Promise<NotebookCellOutputDetails> {
+  private async runCellInput(
+    input: CellInput,
+    onlyOutputIndex = -1,
+    outputCallback: (outputDetails: NotebookCellOutputDetails) => void
+  ): Promise<void> {
     const dependencyCombinations = await this.fillDependencies(input.dependencies, true);
     if (onlyOutputIndex === -1 && dependencyCombinations.length > 1) {
-      return {
-        hasMultipleOutputs: true,
-        outputs: await batchPromiseAll(
-          3,
-          dependencyCombinations,
-          (x) => this.processCellInput(input, x),
-          (cell, error) => {
-            return {
-              id: input.id + 'Output',
-              processed: true,
-              error: {
-                error: error.reason,
-              },
-              outputReferences: {},
-            };
-          }
-        ),
-      };
+      const allResults: CellOutput[] = [];
+      for (const peelElement of peel(5, dependencyCombinations)) {
+        const startingIndex = allResults.length;
+        await Promise.all(
+          peelElement.map((x, index) =>
+            this.processCellInput(input, x)
+              .then((e) => {
+                allResults[startingIndex + index] = e;
+                outputCallback({
+                  hasMultipleOutputs: true,
+                  outputs: allResults,
+                });
+                return e;
+              })
+              .catch((ex) => {
+                const output = {
+                  id: input.id + 'Output',
+                  processed: true,
+                  error: {
+                    error: ex.reason,
+                  },
+                  outputReferences: {},
+                } as CellOutput;
+                allResults[startingIndex + index] = output;
+                outputCallback({
+                  hasMultipleOutputs: true,
+                  outputs: allResults,
+                });
+                return output;
+              })
+          )
+        );
+        outputCallback({
+          hasMultipleOutputs: true,
+          outputs: allResults,
+        });
+      }
     } else {
       if (onlyOutputIndex !== -1) {
-        return {
+        outputCallback({
           hasMultipleOutputs: false,
           output: await this.processCellInput(input, dependencyCombinations[onlyOutputIndex]),
-        };
+        });
       } else {
-        return {
+        outputCallback({
           hasMultipleOutputs: false,
           output: await this.processCellInput(input, dependencyCombinations[0]),
-        };
+        });
       }
     }
   }
@@ -931,7 +993,6 @@ export class NotebookKernel {
             outputReferences,
           };
         }
-        debugger;
         if (input.input.resize) {
           const resized = await resizeImage(result.result, input.input.resize.width, input.input.resize.height);
           result.result = resized;

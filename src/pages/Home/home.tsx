@@ -1,3 +1,4 @@
+import ldb from '../../utils/localdata.js';
 import {create} from 'zustand';
 import {produce} from 'immer';
 import Markdown from 'react-markdown';
@@ -26,17 +27,28 @@ export const Home = () => {
   const [editSchema, setEditSchema] = useState(false);
 
   useEffect(() => {
-    const nb = localStorage.getItem('notebook') ? JSON.parse(localStorage.getItem('notebook')!) : example2();
-    setNotebook(nb as Notebook);
-    // setNotebook(dino as Notebook);
+    ldb.get('notebook', (nb: string) => {
+      if (nb) {
+        setNotebook(JSON.parse(nb) as Notebook);
+      } else {
+        setNotebook({
+          cells: [],
+          metadata: {
+            title: 'Untitled Notebook',
+          },
+          bigAssets: [],
+        });
+      }
+    });
   }, []);
 
   useEffect(() => {
     if (notebook) {
       console.log('Saving notebook');
-      console.log(JSON.stringify(notebook, null, 2));
+      // console.log(JSON.stringify(notebook, null, 2));
       try {
-        localStorage.setItem('notebook', JSON.stringify(notebook));
+        ldb.set('notebook', JSON.stringify(notebook));
+        // localStorage.setItem('notebook', JSON.stringify(notebook));
       } catch (e) {
         console.error(e);
       }
@@ -151,6 +163,9 @@ const NotebookViewer = ({notebook, saveNotebook}: {notebook: Notebook; saveNoteb
                     kernelRef.current?.updateCell(e);
                   }
                 }}
+                onMove={(cell, direction) => {
+                  kernelRef.current?.moveCell(cell.input.id, direction);
+                }}
               />
             ))}
           </div>
@@ -185,9 +200,11 @@ const NotebookHeader = ({metadata}: {metadata: Notebook['metadata']}) => {
 const CellContainer = ({
   cell,
   onSave,
+  onMove,
 }: {
   cell: Notebook['cells'][number];
   onSave: (value: NotebookCell | null) => void;
+  onMove: (value: NotebookCell, direction: 'up' | 'down') => void;
 }) => {
   const kernel = useContext(NotebookKernelContext);
   const [isExpanded, setIsExpanded] = React.useState(false);
@@ -204,14 +221,32 @@ const CellContainer = ({
           <ChevronRightIcon className="w-5 h-5 mr-2 text-gray-500" />
         )}
         <span className="font-semibold text-gray-700">Cell {cell.input.id}</span>
-        <button
-          onClick={() => {
-            onSave(null);
-          }}
-          className="btn btn-outline btn-primary  ml-auto bg-red-500 text-white"
-        >
-          Remove
-        </button>
+        <div className={'ml-auto space-x-2'}>
+          <button
+            onClick={() => {
+              onMove(cell, 'up');
+            }}
+            className="btn btn-outline btn-primary  ml-auto bg-green-500 text-white"
+          >
+            Move up
+          </button>
+          <button
+            onClick={() => {
+              onMove(cell, 'down');
+            }}
+            className="btn btn-outline btn-primary  ml-auto bg-green-500 text-white"
+          >
+            Move Down
+          </button>
+          <button
+            onClick={() => {
+              onSave(null);
+            }}
+            className="btn btn-outline btn-primary  ml-auto bg-red-500 text-white"
+          >
+            Remove
+          </button>
+        </div>
       </div>
       {isExpanded && (
         <div className="p-4">
@@ -290,18 +325,11 @@ export const CellTypeComponent = ({
   }, [dependencies, kernel, kernel?.notebook]);
   const [showPrompt, setShowPrompt] = useState(true);
 
-  function getImageUrl(url: string) {
-    if (url.startsWith('http')) {
-      return url;
-    }
-    return `data:image/png;base64,${url}`;
-  }
-
   switch (cellType.type) {
     case 'number':
       return <p className="text-lg font-semibold text-gray-700">{cellType.value}</p>;
     case 'image':
-      return <img src={getImageUrl(cellType.content)} alt="Input" className="max-w-full h-auto rounded-lg shadow-md" />;
+      return <img src={cellType.content} alt="Input" className="max-w-full h-auto rounded-lg shadow-md" />;
     case 'webpage':
       return <iframe src={cellType.content} className="w-full h-64 border-0 rounded-lg shadow-md" />;
     case 'json':
@@ -497,6 +525,7 @@ function CellTypeComponentEditable({
               >
                 <option value="">none</option>
                 <option value="gpt-3.5-turbo-0125">gpt-3.5-turbo-0125</option>
+                <option value="gpt-4o">gpt-4o</option>
                 {/* Add more model options as needed */}
               </select>
             </div>
@@ -552,7 +581,7 @@ function CellTypeComponentEditable({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Resize</label>
               <select
-                value={cellType.model}
+                value={cellType.resize ? `${cellType.resize.width}x${cellType.resize?.height}` : ''}
                 onChange={(e) => {
                   const strings = e.target.value.split('x');
                   if (strings.length !== 2) return onSave({...cellType, resize: undefined});
@@ -678,34 +707,44 @@ function CellTypeComponentEditable({
 
 function ObjectViewer({object}: {object: Record<string, any>}) {
   const [viewAsJSON, setViewAsJSON] = useState(false);
+  const [collapse, setCollapse] = useState(false);
   return (
     <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
       <button onClick={() => setViewAsJSON(!viewAsJSON)} className="btn btn-outline btn-primary mb-4">
         {viewAsJSON ? 'View As Table' : 'View As JSON'}
       </button>
+      <button onClick={() => setCollapse(!collapse)} className="btn btn-outline btn-primary mb-4">
+        {!collapse ? 'Collapse' : 'Expand'}
+      </button>
       {viewAsJSON ? (
         <pre>{JSON.stringify(object, null, 2)}</pre>
       ) : (
-        <table className="min-w-full divide-y divide-gray-200">
-          <tbody className="divide-y divide-gray-200">
-            {Object.entries(object).map(([key, value], index) => (
-              <tr key={index}>
-                <td className="py-2 pr-4 font-medium text-gray-900" width={'20%'}>
-                  {key}
-                </td>
-                <td className="py-2 pl-4 text-gray-500">
-                  {typeof value === 'object' ? (
-                    <ObjectViewer object={value} />
-                  ) : typeof value === 'string' ? (
-                    <Markdown className={'prose'}>{String(value)}</Markdown>
-                  ) : (
-                    String(value)
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        !collapse && (
+          <table className="min-w-full divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200">
+              {Object.entries(object).map(([key, value], index) => (
+                <tr key={index}>
+                  <td className="py-2 pr-4 font-medium text-gray-900" width={'20%'}>
+                    {key}
+                  </td>
+                  <td className="py-2 pl-4 text-gray-500">
+                    {typeof value === 'object' ? (
+                      <ObjectViewer object={value} />
+                    ) : typeof value === 'string' ? (
+                      value.startsWith('data:') ? (
+                        <img src={value} alt="Image" className="max-w-full h-auto" />
+                      ) : (
+                        <Markdown className={'prose'}>{String(value)}</Markdown>
+                      )
+                    ) : (
+                      String(value)
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
       )}
     </div>
   );
@@ -962,28 +1001,42 @@ const CellOutputComponent = ({
 }) => {
   const [editing, setEditing] = useState(false);
 
-  const renderOutput = () => {
-    if (!output.processed) {
-      return <p className="text-yellow-500">Output not processed yet</p>;
-    }
-
-    if (output.error) {
-      return <ErrorDisplay error={output.error} />;
-    }
-
-    if (!output.output) {
-      return <p className="text-blue-500">No output available</p>;
-    }
-
-    return <CellTypeComponent cellType={output.output} dependencies={input.dependencies} />;
-  };
-
+  const [collapseOutputReferences, setCollapseOutputReferences] = useState(true);
   return (
     <div className="mt-6">
       <h3 className="text-lg font-semibold mb-3">Output {outputIndex}</h3>
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         {!editing ? (
-          renderOutput()
+          !output.processed ? (
+            <p className="text-yellow-500">Output not processed yet</p>
+          ) : output.error ? (
+            <ErrorDisplay error={output.error} />
+          ) : !output.output ? (
+            <p className="text-blue-500">No output available</p>
+          ) : (
+            <>
+              <CellTypeComponent cellType={output.output} dependencies={input.dependencies} />
+              <button
+                onClick={() => setCollapseOutputReferences(!collapseOutputReferences)}
+                className="btn btn-outline btn-secondary mt-4"
+              >
+                <PencilIcon className="w-5 h-5 mr-2" />
+                {collapseOutputReferences ? 'Show Output References' : 'Hide Output References'}
+              </button>
+              {!collapseOutputReferences && output.outputReferences && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+                  <p className="font-semibold text-blue-700 mb-2">Output References:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    {Object.entries(output.outputReferences).map(([key, value], index) => (
+                      <li key={index} className="text-blue-600">
+                        <strong>{key}:</strong> <ObjectViewer object={JSON.parse(value)} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )
         ) : (
           <CellTypeComponentEditable
             cellType={output.output}
