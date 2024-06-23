@@ -14,6 +14,7 @@ import {
   CellOutput,
   CellTypes,
   example2,
+  getImagePath,
   Notebook,
   NotebookCell,
   NotebookKernel,
@@ -40,7 +41,7 @@ export const Home = () => {
           metadata: {
             title: 'Untitled Notebook',
           },
-          bigAssets: [],
+          assetLookup: [],
         });
       }
     });
@@ -285,6 +286,20 @@ const CellContainer = ({
               Clear outputs
             </button>
           )}
+          {cell.outputDetails && (
+            <button
+              onClick={() => {
+                const should = confirm('Are you sure you want to download the outputs?');
+                if (should) {
+                  kernel?.downloadOutputs(cell.input.id);
+                }
+              }}
+              className="btn btn-outline btn-secondary mt-4"
+            >
+              <PencilIcon className="w-5 h-5 mr-2" />
+              Download outputs
+            </button>
+          )}
           {showOutputs ? (
             <>
               {cell.outputDetails &&
@@ -310,7 +325,15 @@ const CellContainer = ({
                 ))}
             </>
           ) : (
-            <div className="text-gray-500">Has outputs</div>
+            <div className="text-gray-500">
+              Has{' '}
+              {cell.outputDetails?.hasMultipleOutputs
+                ? cell.outputDetails.outputs.length
+                : cell.outputDetails?.output
+                ? 1
+                : 0}{' '}
+              output(s)
+            </div>
           )}
         </div>
       )}
@@ -340,7 +363,23 @@ export const CellTypeComponent = ({
     case 'number':
       return <p className="text-lg font-semibold text-gray-700">{cellType.value}</p>;
     case 'image':
-      return <img src={cellType.content} alt="Input" className="max-w-full h-auto rounded-lg shadow-md" />;
+      return (
+        <img
+          src={getImagePath(cellType.content, kernel?.notebook)}
+          alt="Input"
+          className="max-w-full h-auto rounded-lg shadow-md"
+        />
+      );
+    case 'video':
+      return (
+        <video
+          src={getImagePath(cellType.content, kernel?.notebook)}
+          className="max-w-full h-auto rounded-lg shadow-md"
+          controls
+          muted
+          autoPlay
+        />
+      );
     case 'webpage':
       return <iframe src={cellType.content} className="w-full h-64 border-0 rounded-lg shadow-md" />;
     case 'json':
@@ -451,7 +490,7 @@ export const CellTypeComponent = ({
         </div>
       );
     default:
-      return <p className="text-red-500">Unsupported input type: {(cellType as any).type}</p>;
+      return <p className="text-red-500">Unsupported input type: {cellType.type}</p>;
   }
 };
 
@@ -481,6 +520,15 @@ function CellTypeComponentEditable({
             type="text"
             value={cellType.content}
             onChange={(e) => onSave({type: 'image', content: e.target.value})}
+            className="input input-bordered w-full"
+          />
+        );
+      case 'video':
+        return (
+          <input
+            type="text"
+            value={cellType.content}
+            onChange={(e) => onSave({type: 'video', content: e.target.value})}
             className="input input-bordered w-full"
           />
         );
@@ -632,7 +680,7 @@ function CellTypeComponentEditable({
           </div>
         );
       default:
-        return <p className="text-red-500">Unsupported input type: {(cellType as any).type}</p>;
+        return <p className="text-red-500">Unsupported input type: {cellType.type}</p>;
     }
   };
 
@@ -653,6 +701,12 @@ function CellTypeComponentEditable({
             case 'image':
               onSave({
                 type: 'image',
+                content: '',
+              });
+              break;
+            case 'video':
+              onSave({
+                type: 'video',
                 content: '',
               });
               break;
@@ -719,6 +773,7 @@ function CellTypeComponentEditable({
       >
         <option value="number">Number</option>
         <option value="image">Image</option>
+        <option value="video">Video</option>
         <option value="webpage">Webpage</option>
         <option value="json">JSON</option>
         <option value="array">Array</option>
@@ -734,6 +789,7 @@ function CellTypeComponentEditable({
 }
 
 function ObjectViewer({object}: {object: Record<string, any>}) {
+  const kernel = useContext(NotebookKernelContext);
   const [viewAsJSON, setViewAsJSON] = useState(false);
   const [collapse, setCollapse] = useState(false);
   return (
@@ -759,7 +815,9 @@ function ObjectViewer({object}: {object: Record<string, any>}) {
                     {typeof value === 'object' ? (
                       <ObjectViewer object={value} />
                     ) : typeof value === 'string' ? (
-                      value.startsWith('data:') ? (
+                      value.startsWith('asset:') ? (
+                        <img src={getImagePath(value, kernel?.notebook)} alt="Image" className="max-w-full h-auto" />
+                      ) : value.startsWith('data:') ? (
                         <img src={value} alt="Image" className="max-w-full h-auto" />
                       ) : (
                         <Markdown className={'prose'}>{String(value)}</Markdown>

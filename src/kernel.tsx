@@ -1,7 +1,8 @@
 import {zodToJsonSchema} from 'zod-to-json-schema';
 import OpenAI from 'openai';
 import {z, ZodType} from 'zod';
-import {RunUtils, RunUtilsImage} from '@/RunUtils.ts';
+import {RunUtils, RunUtilsImage, RunUtilsVideo} from '@/RunUtils.ts';
+import * as JSZip from 'jszip';
 
 function zodToString(param: () => any) {
   return param.toString().substring(param.toString().indexOf('()=>') + 4);
@@ -31,7 +32,7 @@ ai will:
     metadata: {
       title: 'buildShow',
     },
-    bigAssets: [],
+    assetLookup: [],
     cells: [
       {
         input: {
@@ -317,7 +318,7 @@ function example1() {
     metadata: {
       title: 'buildMeshGradient',
     },
-    bigAssets: [],
+    assetLookup: [],
     cells: [
       {
         input: {
@@ -374,9 +375,9 @@ export type NotebookCell = {
 };
 export type Notebook = {
   cells: NotebookCell[];
-  bigAssets: Array<{
+  assetLookup: Array<{
     assetId: string;
-    type: 'image';
+    type: 'image' | 'video';
     content: string;
   }>;
   metadata: {
@@ -453,6 +454,10 @@ export type CellTypes =
   | {
       type: 'number';
       value: number;
+    }
+  | {
+      type: 'video';
+      content: string;
     }
   | {
       type: 'image';
@@ -589,6 +594,65 @@ export class NotebookKernel {
     }
     cell.outputDetails = undefined;
     this.saveNotebook();
+  }
+  downloadOutputs(cellId: string) {
+    if (!this.notebook) {
+      throw new Error('Notebook not loaded');
+    }
+    const cell = this.notebook.cells.find((x) => x.input.id === cellId);
+    if (!cell) {
+      throw new Error('Cell not found');
+    }
+    if (!cell.outputDetails) {
+      throw new Error('Cell has no outputs');
+    }
+    if (cell.outputDetails.hasMultipleOutputs) {
+      const zip = new JSZip();
+      for (let index = 0; index < cell.outputDetails.outputs.length; index++) {
+        const output = cell.outputDetails.outputs[index];
+        if (!output.output) {
+          continue;
+        }
+        if (output.output.type === 'image') {
+          const base64Image = getImagePath(output.output.content, this.notebook);
+          zip.file(`${output.id}-${index}.jpg`, base64Image.split('base64,')[1], {base64: true});
+        } else if (output.output.type === 'video') {
+          const base64Image = getImagePath(output.output.content, this.notebook);
+          zip.file(`${output.id}-${index}.webm`, base64Image.split('base64,')[1], {base64: true});
+        } else {
+          const result = JSON.stringify(output.output, null, 2);
+          zip.file(`${output.id}-${index}.json`, result);
+        }
+      }
+      zip.generateAsync({type: 'blob'}).then((content) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(content);
+        a.download = 'outputs.zip';
+        a.click();
+      });
+    } else {
+      const output = cell.outputDetails.output;
+      if (!output.output) {
+        throw new Error('Cell has no output');
+      }
+      if (output.output.type === 'image') {
+        const a = document.createElement('a');
+        a.href = getImagePath(output.output.content, this.notebook);
+        a.download = output.id + '.jpg';
+        a.click();
+      } else if (output.output.type === 'video') {
+        const a = document.createElement('a');
+        a.href = getImagePath(output.output.content, this.notebook);
+        a.download = output.id + '.webm';
+        a.click();
+      } else {
+        const result = JSON.stringify(output.output, null, 2);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([result], {type: 'application/json'}));
+        a.download = output.id + '.json';
+        a.click();
+      }
+    }
   }
   addCell(name: string) {
     if (!this.notebook) {
@@ -892,6 +956,16 @@ export class NotebookKernel {
           },
           outputReferences,
         };
+      case 'video':
+        return {
+          id: id,
+          processed: true,
+          output: {
+            type: 'video',
+            content: input.input.content,
+          },
+          outputReferences,
+        };
       case 'webpage':
         return {
           id: id,
@@ -943,8 +1017,7 @@ export class NotebookKernel {
           outputReferences,
         };
       case 'code': {
-        let result = await runCode(input.input.content, dependencies);
-        result = await postProcessResult(result);
+        const result = await runCode(this.notebook, input.input.content, dependencies, postProcessResult);
         return {
           id: id,
           processed: true,
@@ -1236,6 +1309,9 @@ export class NotebookKernel {
     if (!this.notebook) {
       throw new Error('Notebook not loaded');
     }
+
+    this.moveAssets(this.notebook);
+
     this.notebook = structuredClone(this.notebook);
     this.onSave(this.notebook);
   }
@@ -1249,9 +1325,92 @@ export class NotebookKernel {
     }
     return cellElement.outputDetails.output.processed;
   }
+
+  private moveAssets(notebook: Notebook) {
+    for (const cell of notebook.cells) {
+      if (cell.outputDetails) {
+        if (cell.outputDetails.hasMultipleOutputs) {
+          for (const output of cell.outputDetails.outputs) {
+            if (!output) continue; // hasnt been populated yet
+            const out = output.output;
+            if (out?.type === 'image' && out.content.startsWith('data:image')) {
+              const foundAsset = notebook.assetLookup.find((x) => x.content === out.content);
+              if (foundAsset) {
+                out.content = 'asset:' + foundAsset.assetId;
+              } else {
+                const assetId = uuidv4();
+                notebook.assetLookup.push({
+                  assetId: assetId,
+                  type: 'image',
+                  content: out.content,
+                });
+                out.content = 'asset:' + assetId;
+              }
+            }
+            if (out?.type === 'video' && out.content.startsWith('data:video')) {
+              const foundAsset = notebook.assetLookup.find((x) => x.content === out.content);
+              if (foundAsset) {
+                out.content = 'asset:' + foundAsset.assetId;
+              } else {
+                const assetId = uuidv4();
+                notebook.assetLookup.push({
+                  assetId: assetId,
+                  type: 'video',
+                  content: out.content,
+                });
+                out.content = 'asset:' + assetId;
+              }
+            }
+          }
+        } else {
+          if (
+            cell.outputDetails.output?.output?.type === 'image' &&
+            cell.outputDetails.output.output.content.startsWith('data:image')
+          ) {
+            const content = cell.outputDetails.output.output.content;
+            const foundAsset = notebook.assetLookup.find((x) => x.content === content);
+            if (foundAsset) {
+              cell.outputDetails.output.output.content = 'asset:' + foundAsset.assetId;
+            } else {
+              const assetId = uuidv4();
+              notebook.assetLookup.push({
+                assetId: assetId,
+                type: 'image',
+                content: content,
+              });
+              cell.outputDetails.output.output.content = 'asset:' + assetId;
+            }
+          }
+          if (
+            cell.outputDetails.output?.output?.type === 'video' &&
+            cell.outputDetails.output.output.content.startsWith('data:video')
+          ) {
+            const content = cell.outputDetails.output.output.content;
+            const foundAsset = notebook.assetLookup.find((x) => x.content === content);
+            if (foundAsset) {
+              cell.outputDetails.output.output.content = 'asset:' + foundAsset.assetId;
+            } else {
+              const assetId = uuidv4();
+              notebook.assetLookup.push({
+                assetId: assetId,
+                type: 'video',
+                content: content,
+              });
+              cell.outputDetails.output.output.content = 'asset:' + assetId;
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
-async function runCode(content: string, dependencies: CellDependencyValues | undefined) {
+async function runCode(
+  notebook: Notebook | undefined,
+  content: string,
+  dependencies: CellDependencyValues | undefined,
+  postProcess: (result: any) => Promise<any>
+) {
   const args: {key: string; value: any}[] = [];
   if (dependencies) {
     for (const key in dependencies) {
@@ -1262,13 +1421,18 @@ async function runCode(content: string, dependencies: CellDependencyValues | und
       args.push({key: key, value: parseCell(dependency)});
     }
   }
+  RunUtils.instance.setNotebook(notebook);
 
   const result = new Function(...args.map((x) => x.key), 'Utils', content + '\n\nreturn run;')(
     ...args.map((x) => x.value),
     RunUtils.instance
   );
+  let outcome = result();
+  outcome = await postProcess(outcome);
 
-  return result();
+  RunUtils.instance.setNotebook(undefined);
+
+  return outcome;
 }
 
 function inferOutput(result: any): CellTypes {
@@ -1276,6 +1440,12 @@ function inferOutput(result: any): CellTypes {
     if (result.startsWith('data:image')) {
       return {
         type: 'image',
+        content: result,
+      };
+    }
+    if (result.startsWith('data:video')) {
+      return {
+        type: 'video',
         content: result,
       };
     }
@@ -1493,6 +1663,8 @@ function cellToString(cell: CellTypes | undefined): string {
       return cell.value.toString();
     case 'image':
       return `![image](${cell.content})`;
+    case 'video':
+      return `![video](${cell.content})`;
     case 'webpage':
       return `[webpage](${cell.content})`;
     case 'table':
@@ -1511,7 +1683,7 @@ function cellToString(cell: CellTypes | undefined): string {
 function cellToArrayOrValue(cell: CellTypes | undefined):
   | {
       type: 'array';
-      values: CellTypes[];
+      values: (CellTypes | undefined)[];
       value: CellTypes;
     }
   | {
@@ -1542,6 +1714,8 @@ function cellToArrayOrValue(cell: CellTypes | undefined):
         value: cell,
       };
     case 'image':
+      return {type: 'value', value: cell};
+    case 'video':
       return {type: 'value', value: cell};
     case 'webpage':
       return {type: 'value', value: cell};
@@ -1588,6 +1762,8 @@ function parseCell(cell: CellTypes | undefined): any {
       return cell.value;
     case 'image':
       return cell.content;
+    case 'video':
+      return cell.content;
     case 'webpage':
       return cell.content;
     case 'table':
@@ -1628,5 +1804,27 @@ async function postProcessResult(result: any) {
   if (result instanceof RunUtilsImage) {
     result = await result.process();
   }
+  if (result instanceof RunUtilsVideo) {
+    result = await result.process();
+  }
   return result;
+}
+
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0,
+      v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+export function getImagePath(path: string, notebook: Notebook | undefined) {
+  if (!notebook) return path;
+  if (path.indexOf('asset:') === 0) {
+    const assetId = path.substring(6);
+    const asset = notebook.assetLookup.find((asset) => asset.assetId === assetId);
+    if (asset) {
+      return asset.content;
+    }
+  }
+  return path;
 }

@@ -1,10 +1,37 @@
+import {getImagePath, Notebook} from '@/kernel.tsx';
+
 export class RunUtils {
   static instance = new RunUtils();
+  notebook: Notebook | undefined;
+  setNotebook(notebook: Notebook | undefined) {
+    this.notebook = notebook;
+    return this;
+  }
   private constructor() {
     return;
   }
   loadImage(url: string) {
-    return new RunUtilsImage(url);
+    return new RunUtilsImage(this, url);
+  }
+  newVideo() {
+    return new RunUtilsVideo(this);
+  }
+}
+export class RunUtilsVideo {
+  constructor(public runUtils: RunUtils) {}
+
+  images: {url: string; durationMS: number}[] = [];
+  addImage(url: string, durationMS: number) {
+    this.images.push({url, durationMS});
+    return this;
+  }
+  finish() {
+    return this;
+  }
+  async process() {
+    return createVideoFromImages(
+      this.images.map((image) => ({url: getImagePath(image.url, this.runUtils.notebook), durationMS: image.durationMS}))
+    );
   }
 }
 type RunUtilsImageEffect = {
@@ -13,7 +40,7 @@ type RunUtilsImageEffect = {
   bottomText: string;
 };
 export class RunUtilsImage {
-  constructor(public url: string) {}
+  constructor(public runUtils: RunUtils, public url: string) {}
   effects: RunUtilsImageEffect[] = [];
   addMemeText(topText: string, bottomText: string) {
     this.effects.push({
@@ -112,14 +139,46 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines;
 }
 
-/*
-function run(){
-  for (let i = 0; i < processedImages.length; i++) {
-    const processedImage = processedImages[i];
-    const processedImageData =pImagesOutput[i];
-    debugger;
+async function createVideoFromImages(frames: {url: string; durationMS: number}[]): Promise<string> {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const stream = canvas.captureStream();
+  const recorder = new MediaRecorder(stream, {mimeType: 'video/webm'});
 
+  const chunks: Blob[] = [];
+  recorder.ondataavailable = (e) => chunks.push(e.data);
+
+  recorder.start();
+
+  for (const frame of frames) {
+    const img = await loadImage(frame.url);
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx?.drawImage(img, 0, 0);
+    await wait(frame.durationMS);
   }
 
+  recorder.stop();
+
+  return new Promise((resolve) => {
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, {type: 'video/webm'});
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    };
+  });
 }
-*/
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
