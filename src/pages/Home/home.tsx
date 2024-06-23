@@ -13,7 +13,6 @@ import {
   CellInput,
   CellOutput,
   CellTypes,
-  example2,
   getImagePath,
   Notebook,
   NotebookCell,
@@ -22,7 +21,20 @@ import {
   unreachable,
 } from '@/kernel.tsx';
 import Editor from '@monaco-editor/react';
-import {PencilIcon, PlayIcon} from '@heroicons/react/20/solid';
+import {
+  ArrowDownTrayIcon,
+  ArrowUpIcon,
+  ChevronUpIcon,
+  CodeBracketIcon,
+  CommandLineIcon,
+  DocumentTextIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  PencilIcon,
+  PlayIcon,
+  TrashIcon,
+  XCircleIcon,
+} from '@heroicons/react/20/solid';
 import clsx from 'clsx';
 import {DebounceUtils} from '@/utils/debounceUtils.ts';
 hljs.registerLanguage('javascript', javascript);
@@ -30,6 +42,7 @@ hljs.registerLanguage('javascript', javascript);
 export const Home = () => {
   const [notebook, setNotebook] = useState<Notebook | undefined>();
   const [editSchema, setEditSchema] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     ldb.get('notebook', (nb: string) => {
@@ -65,45 +78,32 @@ export const Home = () => {
   }, [notebook]);
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
-      <div className="flex space-x-4 mb-6">
-        {/*<button
-          className="btn btn-primary"
-          onClick={async () => {
-            if (notebook) await runKernel(notebook);
-          }}
-        >
-          <PlayIcon className="w-5 h-5 mr-2" />
-          Run Kernel
-        </button>*/}
-        <button className="btn btn-secondary" onClick={() => setEditSchema(!editSchema)}>
-          <PencilIcon className="w-5 h-5 mr-2" />
-          {editSchema ? 'Close Schema Editor' : 'Edit Schema'}
-        </button>
+    <div className="flex h-screen bg-gray-100">
+      <div className={`bg-gray-800 text-white transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-16'}`}>
+        <div className="p-4">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white">
+            <CommandLineIcon className="h-6 w-6" />
+          </button>
+        </div>
+        {sidebarOpen && (
+          <nav className="mt-8">
+            <ul>
+              <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">Notebooks</li>
+              <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">Files</li>
+              <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">Settings</li>
+            </ul>
+          </nav>
+        )}
       </div>
 
-      {editSchema && (
-        <div className="mb-6">
-          <Editor
-            options={{wordWrap: 'on'}}
-            height="50vh"
-            defaultLanguage="json"
-            defaultValue={JSON.stringify(notebook, null, 2)}
-            onChange={(e) => {
-              DebounceUtils.debounce('editCode', 1000, () => {
-                try {
-                  setNotebook(JSON.parse(e!));
-                } catch (e) {
-                  console.error(e);
-                }
-              });
-            }}
-            className="border border-gray-300 rounded-lg shadow-sm"
-          />
-        </div>
-      )}
+      {/* Main content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
 
-      {notebook && <NotebookViewer notebook={notebook} saveNotebook={setNotebook} />}
+        {/* Notebook area */}
+
+        {notebook && <NotebookViewer notebook={notebook} saveNotebook={setNotebook} />}
+      </div>
     </div>
   );
 };
@@ -150,63 +150,89 @@ const NotebookViewer = ({notebook, saveNotebook}: {notebook: Notebook; saveNoteb
     };
     setIsLoaded(true);
   }, [notebook]);
-
+  const [editSchema, setEditSchema] = useState(false);
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
-      {isLoaded && (
-        <NotebookKernelContext.Provider value={kernelRef.current}>
-          <NotebookHeader metadata={notebook.metadata} />
-          <div className="mt-4 text-sm text-gray-600 grid grid-cols-2 gap-2">
-            <p>Total Tokens In: {outputMeta.tokensIn}</p>
-            <p>Total Tokens Out: {outputMeta.tokensOut}</p>
-            <p>Total Cost In: ${outputMeta.costIn.toFixed(6)}</p>
-            <p>Total Cost Out: ${outputMeta.costOut.toFixed(6)}</p>
-          </div>
-          <div className="space-y-6 mt-6">
-            {notebook.cells.map((cell, index) => (
-              <CellContainer
-                key={index}
-                cell={cell}
-                onSave={(e) => {
-                  if (!e) {
-                    kernelRef.current?.removeCell(cell.input.id);
-                  } else {
-                    kernelRef.current?.updateCell(e);
-                  }
-                }}
-                onMove={(cell, direction) => {
-                  kernelRef.current?.moveCell(cell.input.id, direction);
-                }}
-              />
-            ))}
-          </div>
+    <div className="flex-1 overflow-auto">
+      <header className="bg-purple-600 text-white p-4 flex justify-between items-center">
+        <h1 className="text-3xl font-bold">{notebook?.metadata.title ?? '[Untitled Notebook]'}</h1>
+        <div className="flex space-x-2">
           <button
-            onClick={async () => {
+            onClick={() => {
+              setEditSchema(!editSchema);
+            }}
+            className="bg-purple-700 hover:bg-purple-800 text-white px-3 py-1 rounded flex items-center"
+          >
+            Show schema
+          </button>
+          <button
+            onClick={() => {
               const name = prompt('Enter the name of the new cell');
               if (name) {
                 kernelRef.current?.addCell(name);
               }
             }}
-            className="btn btn-primary mt-6"
+            className="bg-purple-700 hover:bg-purple-800 text-white px-3 py-1 rounded flex items-center"
           >
-            <PencilIcon className="w-5 h-5 mr-2" />
             Add Cell
           </button>
-        </NotebookKernelContext.Provider>
-      )}
+        </div>
+      </header>
+      <div className="bg-white rounded-xl shadow-md p-6">
+        {editSchema && (
+          <div className="mb-6">
+            <Editor
+              options={{wordWrap: 'on'}}
+              height="50vh"
+              defaultLanguage="json"
+              defaultValue={JSON.stringify(notebook, null, 2)}
+              onChange={(e) => {
+                DebounceUtils.debounce('editCode', 1000, () => {
+                  try {
+                    saveNotebook(JSON.parse(e!));
+                  } catch (e) {
+                    console.error(e);
+                  }
+                });
+              }}
+              className="border border-gray-300 rounded-lg shadow-sm"
+            />
+          </div>
+        )}
+
+        {isLoaded && (
+          <NotebookKernelContext.Provider value={kernelRef.current}>
+            {/*<div className="mt-4 text-sm text-gray-600 grid grid-cols-2 gap-2">
+              <p>Total Tokens In: {outputMeta.tokensIn}</p>
+              <p>Total Tokens Out: {outputMeta.tokensOut}</p>
+              <p>Total Cost In: ${outputMeta.costIn.toFixed(6)}</p>
+              <p>Total Cost Out: ${outputMeta.costOut.toFixed(6)}</p>
+            </div>*/}
+            <div className="flex-1 overflow-auto p-4">
+              {notebook.cells.map((cell, index) => (
+                <CellContainer
+                  key={index}
+                  cell={cell}
+                  onSave={(e) => {
+                    if (!e) {
+                      kernelRef.current?.removeCell(cell.input.id);
+                    } else {
+                      kernelRef.current?.updateCell(e);
+                    }
+                  }}
+                  onMove={(cell, direction) => {
+                    kernelRef.current?.moveCell(cell.input.id, direction);
+                  }}
+                />
+              ))}
+            </div>
+          </NotebookKernelContext.Provider>
+        )}
+      </div>
     </div>
   );
 };
 
 const NotebookKernelContext = React.createContext<NotebookKernel | null>(null);
-
-const NotebookHeader = ({metadata}: {metadata: Notebook['metadata']}) => {
-  return (
-    <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-lg mb-6">
-      <h1 className="text-3xl font-bold">{metadata.title}</h1>
-    </div>
-  );
-};
 
 const CellContainer = ({
   cell,
@@ -220,123 +246,143 @@ const CellContainer = ({
   const kernel = useContext(NotebookKernelContext);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [showOutputs, setShowOutputs] = useState(false);
+  const [processing, setProcessing] = useState(false);
   return (
-    <div className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div
-        className="flex items-center p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors duration-150"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        {isExpanded ? (
-          <ChevronDownIcon className="w-5 h-5 mr-2 text-gray-500" />
-        ) : (
-          <ChevronRightIcon className="w-5 h-5 mr-2 text-gray-500" />
-        )}
-        <span className="font-semibold text-gray-700">Cell {cell.input.id}</span>
-        <div className={'ml-auto space-x-2'}>
+    <div className="mb-4 border border-gray-300 rounded-lg overflow-hidden shadow-md">
+      <div className="bg-gray-200 p-2 flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <button onClick={() => setIsExpanded(!isExpanded)} className="text-gray-600 hover:text-gray-800">
+            {isExpanded ? <ChevronDownIcon className="h-5 w-5" /> : <ChevronRightIcon className="h-5 w-5" />}
+          </button>
+          <span className="font-bold">{cell.input.id}</span>
+        </div>
+        <div className="flex space-x-2">
           <button
-            onClick={() => {
-              onMove(cell, 'up');
-            }}
-            className="btn btn-outline btn-primary  ml-auto bg-green-500 text-white"
+            onClick={() => onMove(cell, 'up')}
+            className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
           >
-            Move up
+            <ChevronUpIcon className="h-5 w-5" />
           </button>
           <button
-            onClick={() => {
-              onMove(cell, 'down');
-            }}
-            className="btn btn-outline btn-primary  ml-auto bg-green-500 text-white"
+            onClick={() => onMove(cell, 'down')}
+            className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
           >
-            Move Down
+            <ChevronDownIcon className="h-5 w-5" />
+          </button>
+          <button onClick={() => onSave(null)} className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">
+            <TrashIcon className="h-5 w-5" />
           </button>
           <button
-            onClick={() => {
-              onSave(null);
+            onClick={async () => {
+              setProcessing(true);
+              await kernel?.runCell(cell.input.id, true);
+              setProcessing(false);
             }}
-            className="btn btn-outline btn-primary  ml-auto bg-red-500 text-white"
+            className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 flex items-center"
           >
-            Remove
+            <PlayIcon className="w-5 h-5 mr-2" />
+            {kernel?.cellHasOutput(cell.input.id) ? 'Re-run Cell' : 'Run Cell'}
           </button>
         </div>
       </div>
       {isExpanded && (
-        <div className="p-4">
+        <>
           <CellInputComponent
+            processing={processing}
             cellInput={cell.input}
             onSave={(e) => {
               cell.input = e;
               onSave(cell);
             }}
           />
-          <button onClick={() => setShowOutputs(!showOutputs)} className="btn btn-outline btn-secondary mt-4">
-            <PencilIcon className="w-5 h-5 mr-2" />
-            {showOutputs ? 'Hide Outputs' : 'Show Outputs'}
-          </button>
           {cell.outputDetails && (
-            <button
-              onClick={() => {
-                const should = confirm('Are you sure you want to clear the outputs?');
-                if (should) {
-                  kernel?.clearOutputs(cell.input.id);
-                }
-              }}
-              className="btn btn-outline btn-secondary mt-4"
-            >
-              <PencilIcon className="w-5 h-5 mr-2" />
-              Clear outputs
-            </button>
-          )}
-          {cell.outputDetails && (
-            <button
-              onClick={() => {
-                const should = confirm('Are you sure you want to download the outputs?');
-                if (should) {
-                  kernel?.downloadOutputs(cell.input.id);
-                }
-              }}
-              className="btn btn-outline btn-secondary mt-4"
-            >
-              <PencilIcon className="w-5 h-5 mr-2" />
-              Download outputs
-            </button>
-          )}
-          {showOutputs ? (
-            <>
-              {cell.outputDetails &&
-                (cell.outputDetails.hasMultipleOutputs ? (
-                  <div className="space-y-4">
-                    {cell.outputDetails.outputs.map((output, index) => (
-                      <Fragment key={index}>
-                        <CellOutputComponent outputIndex={index} output={output} input={cell.input} />
-                        <button
-                          onClick={async () => {
-                            await kernel?.rerunCellOutput(cell.input.id, index, true);
-                          }}
-                          className="btn btn-primary"
-                        >
-                          <PlayIcon className="w-5 h-5 mr-2" />
-                          Re-run output
-                        </button>
-                      </Fragment>
+            <div className="border-t border-gray-300">
+              <div className="bg-gray-100 p-2 flex justify-between items-center">
+                <span className="font-semibold">Output</span>
+                <div className="flex space-x-2">
+                  <button onClick={() => setShowOutputs(!showOutputs)} className="text-gray-600 hover:text-gray-800">
+                    {showOutputs ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const should = confirm('Are you sure you want to clear the outputs?');
+                      if (should) {
+                        kernel?.clearOutputs(cell.input.id);
+                      }
+                    }}
+                    className="text-gray-600 hover:text-gray-800"
+                  >
+                    <XCircleIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const should = confirm('Are you sure you want to download the outputs?');
+                      if (should) {
+                        kernel?.downloadOutputs(cell.input.id);
+                      }
+                    }}
+                    className="text-gray-600 hover:text-gray-800"
+                  >
+                    <ArrowDownTrayIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              {showOutputs ? (
+                <div className={'p-4'}>
+                  {cell.outputDetails &&
+                    (cell.outputDetails.hasMultipleOutputs ? (
+                      <div className="space-y-4">
+                        {cell.outputDetails.outputs.map((output, index) => (
+                          <Fragment key={index}>
+                            <CellOutputComponent outputIndex={index} output={output} input={cell.input} />
+                            <button
+                              onClick={async () => {
+                                await kernel?.rerunCellOutput(cell.input.id, index, true);
+                              }}
+                              className="btn btn-primary"
+                            >
+                              <PlayIcon className="w-5 h-5 mr-2" />
+                              Re-run output
+                            </button>
+                          </Fragment>
+                        ))}
+                      </div>
+                    ) : (
+                      <CellOutputComponent output={cell.outputDetails.output} input={cell.input} />
                     ))}
-                  </div>
-                ) : (
-                  <CellOutputComponent output={cell.outputDetails.output} input={cell.input} />
-                ))}
-            </>
-          ) : (
-            <div className="text-gray-500">
-              Has{' '}
-              {cell.outputDetails?.hasMultipleOutputs
-                ? cell.outputDetails.outputs.length
-                : cell.outputDetails?.output
-                ? 1
-                : 0}{' '}
-              output(s)
+                </div>
+              ) : (
+                <div className="text-gray-500 p-4">
+                  Has{' '}
+                  {cell.outputDetails?.hasMultipleOutputs
+                    ? cell.outputDetails.outputs.length
+                    : cell.outputDetails?.output
+                    ? 1
+                    : 0}{' '}
+                  output(s)
+                </div>
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
+      {/*<div className="bg-blue-50 p-2 border-t border-blue-200">
+        <p className="text-sm font-semibold">Dependencies:</p>
+        <ul className="list-disc list-inside">
+          {cell.dependencies.map((dep, i) => (
+            <li key={i} className="text-sm">
+              {dep}
+            </li>
+          ))}
+        </ul>
+        <button
+          className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+          onClick={() => {
+          }}
+        >
+          Edit Dependencies
+        </button>
+      </div>*/}
     </div>
   );
 };
@@ -892,188 +938,188 @@ function ObjectEditor({object, onSave}: {object: string; onSave: (value: string)
   );
 }
 
-const CellInputComponent = ({cellInput, onSave}: {cellInput: CellInput; onSave: (value: CellInput) => void}) => {
+const CellInputComponent = ({
+  cellInput,
+  processing,
+  onSave,
+}: {
+  processing: boolean;
+  cellInput: CellInput;
+  onSave: (value: CellInput) => void;
+}) => {
   const [editing, setEditing] = useState(false);
   const kernel = useContext(NotebookKernelContext);
   const [editDependencies, setEditDependencies] = useState(false);
-  const [processing, setProcessing] = useState(false);
   return (
-    <div className={clsx('mb-6 p-4', processing && 'bg-yellow-200/50')}>
-      <h3 className="text-lg font-semibold mb-3">Input</h3>
+    <>
+      <div className="bg-gray-100 p-2 flex justify-between items-center">
+        <span className="font-semibold">Input</span>
+      </div>
+      <div className={clsx('mb-6 p-4', processing && 'bg-yellow-200/50')}>
+        {!editDependencies ? (
+          <>
+            {cellInput.dependencies && Object.keys(cellInput.dependencies).length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="font-semibold text-blue-700 mb-2">Dependencies:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  {Object.entries(cellInput.dependencies).map(([dependencyKey, dependency], index) => (
+                    <li key={index} className="text-blue-600">
+                      <strong>{dependencyKey}:</strong> {dependency.cellId} ({dependency.forEach ? 'Iterate' : 'Single'}
+                      ) ({dependency.type}) {'field' in dependency && `(${dependency.field})`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="font-semibold text-blue-700 mb-2">Dependencies:</p>
 
-      {!editDependencies ? (
-        <>
-          {cellInput.dependencies && Object.keys(cellInput.dependencies).length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-              <p className="font-semibold text-blue-700 mb-2">Dependencies:</p>
-              <ul className="list-disc list-inside space-y-1">
-                {Object.entries(cellInput.dependencies).map(([dependencyKey, dependency], index) => (
-                  <li key={index} className="text-blue-600">
-                    <strong>{dependencyKey}:</strong> {dependency.cellId} ({dependency.forEach ? 'Iterate' : 'Single'})
-                    ({dependency.type}) {'field' in dependency && `(${dependency.field})`}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-          <p className="font-semibold text-blue-700 mb-2">Dependencies:</p>
-
-          <div className="space-y-2">
-            {cellInput.dependencies &&
-              Object.entries(cellInput.dependencies).map(([depKey, dependency], index) => (
-                <div key={index} className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={depKey}
-                    onChange={(e) => {
-                      const newDeps = {...cellInput.dependencies};
-                      delete newDeps[depKey];
-                      newDeps[e.target.value] = {
-                        ...dependency,
-                        cellId: dependency.cellId,
-                      };
-                      onSave({...cellInput, dependencies: newDeps});
-                    }}
-                    className="input input-bordered flex-1"
-                  />
-                  <select
-                    value={dependency.type}
-                    onChange={(e) => {
-                      const newDeps = {...cellInput.dependencies};
-                      switch (e.target.value) {
-                        case 'cellReference':
-                          newDeps[depKey] = {...dependency, type: 'cellReference'};
-                          break;
-                        case 'outputReference':
-                          newDeps[depKey] = {
-                            type: 'outputReference',
-                            field: '',
-                            cellId: dependency.cellId,
-                            forEach: dependency.forEach,
-                          };
-                          break;
-                        default:
-                          break;
-                      }
-                      onSave({...cellInput, dependencies: newDeps});
-                    }}
-                    className="select select-bordered flex-1"
-                  >
-                    <option value="cellReference">Cell Reference</option>
-                    <option value="outputReference">Output Reference</option>
-                  </select>
-                  <select
-                    value={dependency.cellId}
-                    onChange={(e) => {
-                      const newDeps = {...cellInput.dependencies};
-                      newDeps[depKey] = {...dependency, cellId: e.target.value};
-                      onSave({...cellInput, dependencies: newDeps});
-                    }}
-                    className="select select-bordered flex-1"
-                  >
-                    {kernel?.buildReferencesAbove(dependency.type, cellInput.id).map((cell) => {
-                      return <option value={cell.id}>{cell.id}</option>;
-                    })}
-                  </select>
-                  {dependency.type === 'outputReference' && (
-                    <select
-                      value={dependency.field}
+            <div className="space-y-2">
+              {cellInput.dependencies &&
+                Object.entries(cellInput.dependencies).map(([depKey, dependency], index) => (
+                  <div key={index} className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={depKey}
                       onChange={(e) => {
                         const newDeps = {...cellInput.dependencies};
-                        newDeps[depKey] = {...dependency, field: e.target.value};
+                        delete newDeps[depKey];
+                        newDeps[e.target.value] = {
+                          ...dependency,
+                          cellId: dependency.cellId,
+                        };
+                        onSave({...cellInput, dependencies: newDeps});
+                      }}
+                      className="input input-bordered flex-1"
+                    />
+                    <select
+                      value={dependency.type}
+                      onChange={(e) => {
+                        const newDeps = {...cellInput.dependencies};
+                        switch (e.target.value) {
+                          case 'cellReference':
+                            newDeps[depKey] = {...dependency, type: 'cellReference'};
+                            break;
+                          case 'outputReference':
+                            newDeps[depKey] = {
+                              type: 'outputReference',
+                              field: '',
+                              cellId: dependency.cellId,
+                              forEach: dependency.forEach,
+                            };
+                            break;
+                          default:
+                            break;
+                        }
                         onSave({...cellInput, dependencies: newDeps});
                       }}
                       className="select select-bordered flex-1"
                     >
-                      <option value="">Select Field</option>
-                      {kernel?.buildFieldsFromOutputReference(dependency.cellId, cellInput.id).map((cell) => {
+                      <option value="cellReference">Cell Reference</option>
+                      <option value="outputReference">Output Reference</option>
+                    </select>
+                    <select
+                      value={dependency.cellId}
+                      onChange={(e) => {
+                        const newDeps = {...cellInput.dependencies};
+                        newDeps[depKey] = {...dependency, cellId: e.target.value};
+                        onSave({...cellInput, dependencies: newDeps});
+                      }}
+                      className="select select-bordered flex-1"
+                    >
+                      {kernel?.buildReferencesAbove(dependency.type, cellInput.id).map((cell) => {
                         return <option value={cell.id}>{cell.id}</option>;
                       })}
                     </select>
-                  )}
-                  <label>Iterate</label>
-                  <input
-                    type={'checkbox'}
-                    checked={dependency.forEach}
-                    onChange={(e) => {
-                      const newDeps = {...cellInput.dependencies};
-                      newDeps[depKey] = {...dependency, forEach: e.target.checked};
-                      onSave({...cellInput, dependencies: newDeps});
-                    }}
-                    className="checkbox checkbox-primary"
-                  ></input>
-                  <button
-                    onClick={() => {
-                      const newDeps = {...cellInput.dependencies};
-                      delete newDeps[depKey];
-                      onSave({...cellInput, dependencies: newDeps});
-                    }}
-                    className="btn btn-outline btn-primary bg-red-500 text-white"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            <button
-              onClick={() => {
-                const newDeps = {...cellInput.dependencies};
-                let key = 'newDependency';
+                    {dependency.type === 'outputReference' && (
+                      <select
+                        value={dependency.field}
+                        onChange={(e) => {
+                          const newDeps = {...cellInput.dependencies};
+                          newDeps[depKey] = {...dependency, field: e.target.value};
+                          onSave({...cellInput, dependencies: newDeps});
+                        }}
+                        className="select select-bordered flex-1"
+                      >
+                        <option value="">Select Field</option>
+                        {kernel?.buildFieldsFromOutputReference(dependency.cellId, cellInput.id).map((cell) => {
+                          return <option value={cell.id}>{cell.id}</option>;
+                        })}
+                      </select>
+                    )}
+                    <label>Iterate</label>
+                    <input
+                      type={'checkbox'}
+                      checked={dependency.forEach}
+                      onChange={(e) => {
+                        const newDeps = {...cellInput.dependencies};
+                        newDeps[depKey] = {...dependency, forEach: e.target.checked};
+                        onSave({...cellInput, dependencies: newDeps});
+                      }}
+                      className="checkbox checkbox-primary"
+                    ></input>
+                    <button
+                      onClick={() => {
+                        const newDeps = {...cellInput.dependencies};
+                        delete newDeps[depKey];
+                        onSave({...cellInput, dependencies: newDeps});
+                      }}
+                      className="btn btn-outline btn-primary bg-red-500 text-white"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              <button
+                onClick={() => {
+                  const newDeps = {...cellInput.dependencies};
+                  let key = 'newDependency';
 
-                while (newDeps[key]) {
-                  key = key + '1';
-                }
+                  while (newDeps[key]) {
+                    key = key + '1';
+                  }
 
-                newDeps[key] = {cellId: '', forEach: false, type: 'cellReference'};
-                onSave({...cellInput, dependencies: newDeps});
-              }}
-              className="btn btn-outline btn-primary"
-            >
-              Add Dependency
-            </button>
+                  newDeps[key] = {cellId: '', forEach: false, type: 'cellReference'};
+                  onSave({...cellInput, dependencies: newDeps});
+                }}
+                className="btn btn-outline btn-primary"
+              >
+                Add Dependency
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <button onClick={() => setEditDependencies(!editDependencies)} className="btn btn-outline btn-primary mb-4">
-        <PencilIcon className="w-5 h-5 mr-2" />
-        Edit Dependencies
-      </button>
-
-      {!editing ? (
-        <CellTypeComponent cellType={cellInput.input} dependencies={cellInput.dependencies} />
-      ) : (
-        <div>
-          <CellTypeComponentEditable
-            cellType={cellInput.input}
-            onSave={(e) => {
-              cellInput.input = e;
-              onSave(cellInput);
-            }}
-          />
-        </div>
-      )}
-      <div className="mt-4 space-x-2">
-        <button onClick={() => setEditing(!editing)} className="btn btn-outline btn-primary">
+        <button onClick={() => setEditDependencies(!editDependencies)} className="btn btn-outline btn-primary mb-4">
           <PencilIcon className="w-5 h-5 mr-2" />
-          {editing ? 'Finish Editing' : 'Edit'}
+          Edit Dependencies
         </button>
-        <button
-          onClick={async () => {
-            setProcessing(true);
-            await kernel?.runCell(cellInput.id, true);
-            setProcessing(false);
-          }}
-          className="btn btn-primary"
-        >
-          <PlayIcon className="w-5 h-5 mr-2" />
-          {kernel?.cellHasOutput(cellInput.id) ? 'Re-run Cell' : 'Run Cell'}
-        </button>
-        {processing && <p className="text-yellow-500">Processing...</p>}
+
+        {!editing ? (
+          <CellTypeComponent cellType={cellInput.input} dependencies={cellInput.dependencies} />
+        ) : (
+          <div>
+            <CellTypeComponentEditable
+              cellType={cellInput.input}
+              onSave={(e) => {
+                cellInput.input = e;
+                onSave(cellInput);
+              }}
+            />
+          </div>
+        )}
+        <div className="mt-4 space-x-2">
+          <button onClick={() => setEditing(!editing)} className="btn btn-outline btn-primary">
+            <PencilIcon className="w-5 h-5 mr-2" />
+            {editing ? 'Finish Editing' : 'Edit'}
+          </button>
+
+          {processing && <p className="text-yellow-500">Processing...</p>}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

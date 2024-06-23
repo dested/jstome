@@ -29,7 +29,6 @@ import {
 import Markdown from 'react-markdown';
 
 function Other() {
-  return <BoldJupyterInterface></BoldJupyterInterface>;
   const [cells, setCells] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -53,7 +52,6 @@ function Other() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
       <div className={`bg-gray-800 text-white transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-16'}`}>
         <div className="p-4">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white">
