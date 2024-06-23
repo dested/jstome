@@ -1327,81 +1327,101 @@ export class NotebookKernel {
   }
 
   private moveAssets(notebook: Notebook) {
+    const foundAssets: string[] = [];
     for (const cell of notebook.cells) {
       if (cell.outputDetails) {
         if (cell.outputDetails.hasMultipleOutputs) {
           for (const output of cell.outputDetails.outputs) {
             if (!output) continue; // hasnt been populated yet
             const out = output.output;
-            if (out?.type === 'image' && out.content.startsWith('data:image')) {
-              const foundAsset = notebook.assetLookup.find((x) => x.content === out.content);
+            if (out?.type === 'image') {
+              if (out.content.startsWith('data:image')) {
+                const foundAsset = notebook.assetLookup.find((x) => x.content === out.content);
+                if (foundAsset) {
+                  out.content = 'asset:' + foundAsset.assetId;
+                  foundAssets.push(foundAsset.assetId);
+                } else {
+                  const assetId = uuidv4();
+                  notebook.assetLookup.push({
+                    assetId: assetId,
+                    type: 'image',
+                    content: out.content,
+                  });
+                  out.content = 'asset:' + assetId;
+                  foundAssets.push(assetId);
+                }
+              } else if (out.content.startsWith('asset:')) {
+                foundAssets.push(out.content.split('asset:')[1]);
+              }
+            }
+            if (out?.type === 'video') {
+              if (out.content.startsWith('data:video')) {
+                const foundAsset = notebook.assetLookup.find((x) => x.content === out.content);
+                if (foundAsset) {
+                  out.content = 'asset:' + foundAsset.assetId;
+                  foundAssets.push(foundAsset.assetId);
+                } else {
+                  const assetId = uuidv4();
+                  notebook.assetLookup.push({
+                    assetId: assetId,
+                    type: 'video',
+                    content: out.content,
+                  });
+                  out.content = 'asset:' + assetId;
+                  foundAssets.push(assetId);
+                }
+              } else if (out.content.startsWith('asset:')) {
+                foundAssets.push(out.content.split('asset:')[1]);
+              }
+            }
+          }
+        } else {
+          if (cell.outputDetails.output?.output?.type === 'image') {
+            if (cell.outputDetails.output.output.content.startsWith('data:image')) {
+              const content = cell.outputDetails.output.output.content;
+              const foundAsset = notebook.assetLookup.find((x) => x.content === content);
               if (foundAsset) {
-                out.content = 'asset:' + foundAsset.assetId;
+                cell.outputDetails.output.output.content = 'asset:' + foundAsset.assetId;
+                foundAssets.push(foundAsset.assetId);
               } else {
                 const assetId = uuidv4();
                 notebook.assetLookup.push({
                   assetId: assetId,
                   type: 'image',
-                  content: out.content,
+                  content: content,
                 });
-                out.content = 'asset:' + assetId;
+                cell.outputDetails.output.output.content = 'asset:' + assetId;
+                foundAssets.push(assetId);
               }
+            } else if (cell.outputDetails.output.output.content.startsWith('asset:')) {
+              foundAssets.push(cell.outputDetails.output.output.content.split('asset:')[1]);
             }
-            if (out?.type === 'video' && out.content.startsWith('data:video')) {
-              const foundAsset = notebook.assetLookup.find((x) => x.content === out.content);
+          }
+          if (cell.outputDetails.output?.output?.type === 'video') {
+            if (cell.outputDetails.output.output.content.startsWith('data:video')) {
+              const content = cell.outputDetails.output.output.content;
+              const foundAsset = notebook.assetLookup.find((x) => x.content === content);
               if (foundAsset) {
-                out.content = 'asset:' + foundAsset.assetId;
+                cell.outputDetails.output.output.content = 'asset:' + foundAsset.assetId;
+                foundAssets.push(foundAsset.assetId);
               } else {
                 const assetId = uuidv4();
                 notebook.assetLookup.push({
                   assetId: assetId,
                   type: 'video',
-                  content: out.content,
+                  content: content,
                 });
-                out.content = 'asset:' + assetId;
+                cell.outputDetails.output.output.content = 'asset:' + assetId;
+                foundAssets.push(assetId);
               }
-            }
-          }
-        } else {
-          if (
-            cell.outputDetails.output?.output?.type === 'image' &&
-            cell.outputDetails.output.output.content.startsWith('data:image')
-          ) {
-            const content = cell.outputDetails.output.output.content;
-            const foundAsset = notebook.assetLookup.find((x) => x.content === content);
-            if (foundAsset) {
-              cell.outputDetails.output.output.content = 'asset:' + foundAsset.assetId;
-            } else {
-              const assetId = uuidv4();
-              notebook.assetLookup.push({
-                assetId: assetId,
-                type: 'image',
-                content: content,
-              });
-              cell.outputDetails.output.output.content = 'asset:' + assetId;
-            }
-          }
-          if (
-            cell.outputDetails.output?.output?.type === 'video' &&
-            cell.outputDetails.output.output.content.startsWith('data:video')
-          ) {
-            const content = cell.outputDetails.output.output.content;
-            const foundAsset = notebook.assetLookup.find((x) => x.content === content);
-            if (foundAsset) {
-              cell.outputDetails.output.output.content = 'asset:' + foundAsset.assetId;
-            } else {
-              const assetId = uuidv4();
-              notebook.assetLookup.push({
-                assetId: assetId,
-                type: 'video',
-                content: content,
-              });
-              cell.outputDetails.output.output.content = 'asset:' + assetId;
+            } else if (cell.outputDetails.output.output.content.startsWith('asset:')) {
+              foundAssets.push(cell.outputDetails.output.output.content.split('asset:')[1]);
             }
           }
         }
       }
     }
+    notebook.assetLookup = notebook.assetLookup.filter((x) => foundAssets.includes(x.assetId));
   }
 }
 
@@ -1609,6 +1629,7 @@ async function runAIImage(
   }
   const client = new OpenAI({fetch: fetch, apiKey: import.meta.env.VITE_OPENAI_KEY, dangerouslyAllowBrowser: true});
   try {
+    let startTime = Date.now();
     const result = await client.images.generate({
       // stream: true,
       model: input.model,
@@ -1618,6 +1639,10 @@ async function runAIImage(
       n: 1,
       prompt: input.prompt,
     });
+    if (Date.now() - startTime < 61000) {
+      console.log('stalling for ', 61000 - (Date.now() - startTime), 'ms');
+      await new Promise((r) => setTimeout(r, 61000 - (Date.now() - startTime)));
+    }
     return {
       result: result.data[0].b64_json ? `data:image/png;base64,${result.data[0].b64_json}` : '',
       tokensIn: 0,

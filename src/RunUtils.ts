@@ -55,7 +55,7 @@ export class RunUtilsImage {
 
   async process() {
     const image = new Image();
-    image.src = this.url;
+    image.src = getImagePath(this.url, this.runUtils.notebook);
     await new Promise((resolve) => {
       image.onload = resolve;
     });
