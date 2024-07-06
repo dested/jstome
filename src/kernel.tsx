@@ -1,8 +1,10 @@
+import Anthropic from '@anthropic-ai/sdk';
 import {zodToJsonSchema} from 'zod-to-json-schema';
 import OpenAI from 'openai';
 import {z, ZodType} from 'zod';
 import {RunUtils, RunUtilsImage, RunUtilsVideo} from '@/RunUtils.ts';
 import * as JSZip from 'jszip';
+import axios from 'axios';
 
 function zodToString(param: () => any) {
   return param.toString().substring(param.toString().indexOf('()=>') + 4);
@@ -1525,6 +1527,28 @@ async function runAI(input: {
     }
   | CellOutputError
 > {
+  if (input.model.includes('gpt')) {
+    return runOpenAI(input);
+  }
+  return runClaude(input);
+}
+
+async function runOpenAI(input: {
+  prompt: string;
+  temperature: number;
+  model: string;
+  systemPrompt: string;
+  schema?: string;
+}): Promise<
+  | {
+      result: any;
+      tokensIn: number;
+      tokensOut: number;
+      costIn: number;
+      costOut: number;
+    }
+  | CellOutputError
+> {
   const client = new OpenAI({fetch: fetch, apiKey: import.meta.env.VITE_OPENAI_KEY, dangerouslyAllowBrowser: true});
 
   let zodSchema = new Function('z', 'return ' + input.schema)(z) as ZodType<any>;
@@ -1609,6 +1633,93 @@ async function runAI(input: {
   };
 }
 
+async function runClaude(input: {
+  prompt: string;
+  temperature: number;
+  model: string;
+  systemPrompt: string;
+  schema?: string;
+}): Promise<
+  | {
+      result: any;
+      tokensIn: number;
+      tokensOut: number;
+      costIn: number;
+      costOut: number;
+    }
+  | CellOutputError
+> {
+  const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  const anthropic = new Anthropic({
+    apiKey: API_KEY,
+  });
+
+  let zodSchema = new Function('z', 'return ' + input.schema)(z) as ZodType<any>;
+
+  // if zodSchema is an array, wrap it in an object
+  const wasArray = input.schema && zodSchema && 'typeName' in zodSchema._def && zodSchema._def.typeName === 'ZodArray';
+  zodSchema = wasArray ? z.object({items: zodSchema}) : zodSchema;
+
+  try {
+    const schema = zodSchema ? zodToJsonSchema(zodSchema) : undefined;
+
+    const msg = await anthropic.messages.create({
+      model: input.model,
+      temperature: input.temperature,
+      system: input.systemPrompt,
+      tools: schema
+        ? [
+            {
+              description: 'JSON Object',
+              name: 'json_object',
+              input_schema: {
+                type: 'object',
+                properties: schema,
+              },
+            },
+          ]
+        : undefined,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: input.prompt,
+            },
+          ],
+        },
+      ],
+      max_tokens: 4096,
+    });
+
+    if (msg.content[0].type === 'text') {
+      return {
+        result: msg.content[0].text,
+        tokensIn: msg.usage.input_tokens,
+        tokensOut: msg.usage.output_tokens,
+        costIn: msg.usage.input_tokens / 1000,
+        costOut: msg.usage.output_tokens / 1000,
+      };
+    } else {
+      debugger;
+      return {
+        result: JSON.parse(msg.content[0].input),
+        tokensIn: msg.usage.input_tokens,
+        tokensOut: msg.usage.output_tokens,
+        costIn: msg.usage.input_tokens / 1000,
+        costOut: msg.usage.output_tokens / 1000,
+      };
+    }
+  } catch (ex) {
+    console.error(ex);
+  }
+
+  return {
+    error: 'Failed to generate',
+  };
+}
+
 async function runAIImage(
   input: {prompt: string; model: string},
   retryCount = 0
@@ -1629,7 +1740,7 @@ async function runAIImage(
   }
   const client = new OpenAI({fetch: fetch, apiKey: import.meta.env.VITE_OPENAI_KEY, dangerouslyAllowBrowser: true});
   try {
-    let startTime = Date.now();
+    const startTime = Date.now();
     const result = await client.images.generate({
       // stream: true,
       model: input.model,

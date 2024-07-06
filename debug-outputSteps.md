@@ -1,3 +1,18 @@
+Steps to implement the feature:
+
+1. Update the overall layout to resemble VS Code's interface
+2. Modify the sidebar to look more like VS Code's sidebar
+3. Update the main content area styling
+4. Adjust the notebook cell styling to match VS Code's aesthetics
+5. Modify buttons and icons to align with VS Code's design
+6. Update color scheme to match VS Code's default dark theme
+7. Adjust typography to match VS Code's font styles
+8. Refine the cell input and output components to have a more VS Code-like appearance
+
+Now, I'll implement these changes:
+
+File Path: src/pages/Home/home.tsx
+```
 import 'highlight.js/styles/github-dark.css';
 import hljs from 'highlight.js/lib/core';
 import javascript from 'highlight.js/lib/languages/javascript';
@@ -253,10 +268,7 @@ const CellContainer = ({
           >
             <ChevronDownIcon className="h-5 w-5" />
           </button>
-          <button
-            onClick={() => onSave(null)}
-            className="bg-[#3c3c3c] text-[#cccccc] px-2 py-1 rounded hover:bg-[#505050]"
-          >
+          <button onClick={() => onSave(null)} className="bg-[#3c3c3c] text-[#cccccc] px-2 py-1 rounded hover:bg-[#505050]">
             <TrashIcon className="h-5 w-5" />
           </button>
           <button
@@ -357,6 +369,18 @@ const CellContainer = ({
   );
 };
 
+export const CellTypeComponent = ({
+  cellType,
+  dependencies,
+}: {
+  cellType: CellTypes | undefined;
+  dependencies: CellDependencies | undefined;
+}) => {
+}) => {
+}) => {Certainly, I'll continue with the modifications:
+
+File Path: src/pages/Home/home.tsx
+```
 export const CellTypeComponent = ({
   cellType,
   dependencies,
@@ -733,7 +757,13 @@ function CellTypeComponentEditable({
               break;
             case 'webpage':
               onSave({
-                type: 'webpage ',
+                type: 'webpage 'webpage 'webpageCertainly, I'll continue with the modifications:
+
+File Path: src/pages/Home/home.tsx
+```
+            case 'webpage':
+              onSave({
+                type: 'webpage',
                 content: '',
               });
               break;
@@ -965,10 +995,7 @@ const CellInputComponent = ({
           </div>
         )}
 
-        <button
-          onClick={() => setEditDependencies(!editDependencies)}
-          className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded mb-4"
-        >
+        <button onClick={() => setEditDependencies(!editDependencies)} className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded mb-4">
           <PencilIcon className="w-5 h-5 mr-2 inline" />
           Edit Dependencies
         </button>
@@ -987,10 +1014,7 @@ const CellInputComponent = ({
           </div>
         )}
         <div className="mt-4 space-x-2">
-          <button
-            onClick={() => setEditing(!editing)}
-            className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded"
-          >
+          <button onClick={() => setEditing(!editing)} className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded">
             <PencilIcon className="w-5 h-5 mr-2 inline" />
             {editing ? 'Finish Editing' : 'Edit'}
           </button>
@@ -1058,10 +1082,7 @@ const CellOutputComponent = ({
           />
         )}
       </div>
-      <button
-        onClick={() => setEditing(!editing)}
-        className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded mt-4"
-      >
+      <button onClick={() => setEditing(!editing)} className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded mt-4">
         <PencilIcon className="w-5 h-5 mr-2 inline" />
         {editing ? 'Finish Editing' : 'Edit'}
       </button>
@@ -1087,7 +1108,8 @@ const ErrorDisplay = ({error}: {error: {error: string}}) => {
   );
 };
 
-const useNotebookStore = create((set) => ({}));
+const useNotebookStore = create((set) => ({
+}));
 
 function useEffectAsync(effect: () => Promise<void>, deps: React.DependencyList) {
   React.useEffect(() => {
@@ -1110,6 +1132,10 @@ function JsonViewer({json}: {json: any}) {
 
   const renderValue = (value: any, key = '', level = 0) => {
     if (typeof value === 'object' && value !== null) {
+      const isArray = Array.Array = Array.Array = Array.Certainly, I'll continue with the modifications:
+
+File Path: src/pages/Home/home.tsx
+```
       const isArray = Array.isArray(value);
       const brackets = isArray ? ['[', ']'] : ['{', '}'];
       const isExpanded = expandedKeys.has(key);
@@ -1297,3 +1323,5 @@ function EditableValue({
     </>
   );
 }
+```
+

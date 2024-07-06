@@ -1,0 +1,5257 @@
+[
+  {
+    "id": "6689ac795ea6d9f7b3c36fd8",
+    "createdAt": "2024-07-06T20:43:37.550Z",
+    "task": "I need a complete rebrand. I need this to be more VS Code style. Please modify the entire UI, dont change ANY functionality, and clean it way up!!!",
+    "allowPartialFiles": false,
+    "preamble": "Steps to implement the feature:\n\n1. Update the overall layout to resemble VS Code's interface\n2. Modify the sidebar to look more like VS Code's sidebar\n3. Update the main content area styling\n4. Adjust the notebook cell styling to match VS Code's aesthetics\n5. Modify buttons and icons to align with VS Code's design\n6. Update color scheme to match VS Code's default dark theme\n7. Adjust typography to match VS Code's font styles\n8. Refine the cell input and output components to have a more VS Code-like appearance\n\nNow, I'll implement these changes:\n\n",
+    "selectedFiles": [
+      {
+        "filePath": "src/pages/Home/home.tsx",
+        "viewMode": "full"
+      }
+    ],
+    "temperature": 0.5,
+    "model": "claude-3-5-sonnet-20240620",
+    "steps": [
+      {
+        "idNumber": 0,
+        "filePath": "src/pages/Home/home.tsx",
+        "changes": [
+          {
+            "type": "add",
+            "content": "import 'highlight.js/styles/github-dark.css';"
+          },
+          {
+            "type": "add",
+            "content": "import hljs from 'highlight.js/lib/core';"
+          },
+          {
+            "type": "add",
+            "content": "import javascript from 'highlight.js/lib/languages/javascript';"
+          },
+          {
+            "type": "add",
+            "content": "import ldb from '../../utils/localdata.js';"
+          },
+          {
+            "type": "add",
+            "content": "import {create} from 'zustand';"
+          },
+          {
+            "type": "add",
+            "content": "import {produce} from 'immer';"
+          },
+          {
+            "type": "add",
+            "content": "import Markdown from 'react-markdown';"
+          },
+          {
+            "type": "add",
+            "content": "import React, {Fragment, useCallback, useContext, useEffect, useState} from 'react';"
+          },
+          {
+            "type": "add",
+            "content": "import {ChevronDownIcon, ChevronRightIcon} from '@heroicons/react/24/solid';"
+          },
+          {
+            "type": "add",
+            "content": "import {"
+          },
+          {
+            "type": "add",
+            "content": "  CellDependencies,"
+          },
+          {
+            "type": "add",
+            "content": "  CellDependencyValues,"
+          },
+          {
+            "type": "add",
+            "content": "  CellInput,"
+          },
+          {
+            "type": "add",
+            "content": "  CellOutput,"
+          },
+          {
+            "type": "add",
+            "content": "  CellTypes,"
+          },
+          {
+            "type": "add",
+            "content": "  getImagePath,"
+          },
+          {
+            "type": "add",
+            "content": "  Notebook,"
+          },
+          {
+            "type": "add",
+            "content": "  NotebookCell,"
+          },
+          {
+            "type": "add",
+            "content": "  NotebookKernel,"
+          },
+          {
+            "type": "add",
+            "content": "  processWithDependencies,"
+          },
+          {
+            "type": "add",
+            "content": "  unreachable,"
+          },
+          {
+            "type": "add",
+            "content": "} from '@/kernel.tsx';"
+          },
+          {
+            "type": "add",
+            "content": "import Editor from '@monaco-editor/react';"
+          },
+          {
+            "type": "add",
+            "content": "import {"
+          },
+          {
+            "type": "add",
+            "content": "  ArrowDownTrayIcon,"
+          },
+          {
+            "type": "add",
+            "content": "  ChevronUpIcon,"
+          },
+          {
+            "type": "add",
+            "content": "  CommandLineIcon,"
+          },
+          {
+            "type": "add",
+            "content": "  EyeIcon,"
+          },
+          {
+            "type": "add",
+            "content": "  EyeSlashIcon,"
+          },
+          {
+            "type": "add",
+            "content": "  PencilIcon,"
+          },
+          {
+            "type": "add",
+            "content": "  PlayIcon,"
+          },
+          {
+            "type": "add",
+            "content": "  TrashIcon,"
+          },
+          {
+            "type": "add",
+            "content": "  XCircleIcon,"
+          },
+          {
+            "type": "add",
+            "content": "} from '@heroicons/react/20/solid';"
+          },
+          {
+            "type": "add",
+            "content": "import clsx from 'clsx';"
+          },
+          {
+            "type": "add",
+            "content": "import {DebounceUtils} from '@/utils/debounceUtils.ts';"
+          },
+          {
+            "type": "add",
+            "content": "hljs.registerLanguage('javascript', javascript);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "export const Home = () => {"
+          },
+          {
+            "type": "add",
+            "content": "  const [notebook, setNotebook] = useState<Notebook | undefined>();"
+          },
+          {
+            "type": "add",
+            "content": "  const [sidebarOpen, setSidebarOpen] = useState(true);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  useEffect(() => {"
+          },
+          {
+            "type": "add",
+            "content": "    ldb.get('notebook', (nb: string) => {"
+          },
+          {
+            "type": "add",
+            "content": "      if (nb) {"
+          },
+          {
+            "type": "add",
+            "content": "        setNotebook(JSON.parse(nb) as Notebook);"
+          },
+          {
+            "type": "add",
+            "content": "      } else {"
+          },
+          {
+            "type": "add",
+            "content": "        setNotebook({"
+          },
+          {
+            "type": "add",
+            "content": "          cells: [],"
+          },
+          {
+            "type": "add",
+            "content": "          metadata: {"
+          },
+          {
+            "type": "add",
+            "content": "            title: 'Untitled Notebook',"
+          },
+          {
+            "type": "add",
+            "content": "          },"
+          },
+          {
+            "type": "add",
+            "content": "          assetLookup: [],"
+          },
+          {
+            "type": "add",
+            "content": "        });"
+          },
+          {
+            "type": "add",
+            "content": "      }"
+          },
+          {
+            "type": "add",
+            "content": "    });"
+          },
+          {
+            "type": "add",
+            "content": "  }, []);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  useEffect(() => {"
+          },
+          {
+            "type": "add",
+            "content": "    if (notebook) {"
+          },
+          {
+            "type": "add",
+            "content": "      DebounceUtils.debounce('notebook', 1000, () => {"
+          },
+          {
+            "type": "add",
+            "content": "        try {"
+          },
+          {
+            "type": "add",
+            "content": "          console.log('Saving notebook');"
+          },
+          {
+            "type": "add",
+            "content": "          const s = JSON.stringify(notebook);"
+          },
+          {
+            "type": "add",
+            "content": "          console.log((s.length / 1024 / 1024).toFixed(5) + ' MB');"
+          },
+          {
+            "type": "add",
+            "content": "          ldb.set('notebook', s);"
+          },
+          {
+            "type": "add",
+            "content": "        } catch (e) {"
+          },
+          {
+            "type": "add",
+            "content": "          console.error(e);"
+          },
+          {
+            "type": "add",
+            "content": "        }"
+          },
+          {
+            "type": "add",
+            "content": "      });"
+          },
+          {
+            "type": "add",
+            "content": "    }"
+          },
+          {
+            "type": "add",
+            "content": "  }, [notebook]);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  return ("
+          },
+          {
+            "type": "add",
+            "content": "    <div className=\"flex h-screen bg-[#1e1e1e] text-[#d4d4d4]\">"
+          },
+          {
+            "type": "add",
+            "content": "      <div className={`bg-[#252526] transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-16'}`}>"
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"p-4\">"
+          },
+          {
+            "type": "add",
+            "content": "          <button onClick={() => setSidebarOpen(!sidebarOpen)} className=\"text-[#cccccc] hover:text-white\">"
+          },
+          {
+            "type": "add",
+            "content": "            <CommandLineIcon className=\"h-6 w-6\" />"
+          },
+          {
+            "type": "add",
+            "content": "          </button>"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "        {sidebarOpen && ("
+          },
+          {
+            "type": "add",
+            "content": "          <nav className=\"mt-8\">"
+          },
+          {
+            "type": "add",
+            "content": "            <ul>"
+          },
+          {
+            "type": "add",
+            "content": "              <li className=\"px-4 py-2 hover:bg-[#37373d] cursor-pointer\">Notebooks</li>"
+          },
+          {
+            "type": "add",
+            "content": "              <li className=\"px-4 py-2 hover:bg-[#37373d] cursor-pointer\">Files</li>"
+          },
+          {
+            "type": "add",
+            "content": "              <li className=\"px-4 py-2 hover:bg-[#37373d] cursor-pointer\">Settings</li>"
+          },
+          {
+            "type": "add",
+            "content": "            </ul>"
+          },
+          {
+            "type": "add",
+            "content": "          </nav>"
+          },
+          {
+            "type": "add",
+            "content": "        )}"
+          },
+          {
+            "type": "add",
+            "content": "      </div>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "      <div className=\"flex-1 flex flex-col overflow-hidden\">"
+          },
+          {
+            "type": "add",
+            "content": "        {notebook && <NotebookViewer notebook={notebook} saveNotebook={setNotebook} />}"
+          },
+          {
+            "type": "add",
+            "content": "      </div>"
+          },
+          {
+            "type": "add",
+            "content": "    </div>"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": "};"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "const NotebookViewer = ({notebook, saveNotebook}: {notebook: Notebook; saveNotebook: (notebook: Notebook) => void}) => {"
+          },
+          {
+            "type": "add",
+            "content": "  const outputMeta = notebook.cells.reduce("
+          },
+          {
+            "type": "add",
+            "content": "    (acc, cell) => {"
+          },
+          {
+            "type": "add",
+            "content": "      if (!cell.outputDetails) {"
+          },
+          {
+            "type": "add",
+            "content": "        return acc;"
+          },
+          {
+            "type": "add",
+            "content": "      }"
+          },
+          {
+            "type": "add",
+            "content": "      const meta = cell.outputDetails.hasMultipleOutputs"
+          },
+          {
+            "type": "add",
+            "content": "        ? cell.outputDetails.outputs.reduce("
+          },
+          {
+            "type": "add",
+            "content": "            (acc, output) => {"
+          },
+          {
+            "type": "add",
+            "content": "              if (!output.outputMeta) return acc;"
+          },
+          {
+            "type": "add",
+            "content": "              return {"
+          },
+          {
+            "type": "add",
+            "content": "                tokensIn: acc.tokensIn + output.outputMeta.tokensIn,"
+          },
+          {
+            "type": "add",
+            "content": "                tokensOut: acc.tokensOut + output.outputMeta.tokensOut,"
+          },
+          {
+            "type": "add",
+            "content": "                costIn: acc.costIn + output.outputMeta.costIn,"
+          },
+          {
+            "type": "add",
+            "content": "                costOut: acc.costOut + output.outputMeta.costOut,"
+          },
+          {
+            "type": "add",
+            "content": "              };"
+          },
+          {
+            "type": "add",
+            "content": "            },"
+          },
+          {
+            "type": "add",
+            "content": "            {tokensIn: 0, tokensOut: 0, costIn: 0, costOut: 0}"
+          },
+          {
+            "type": "add",
+            "content": "          )"
+          },
+          {
+            "type": "add",
+            "content": "        : cell.outputDetails.output.outputMeta ?? {tokensIn: 0, tokensOut: 0, costIn: 0, costOut: 0};"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "      return {"
+          },
+          {
+            "type": "add",
+            "content": "        tokensIn: acc.tokensIn + meta.tokensIn,"
+          },
+          {
+            "type": "add",
+            "content": "        tokensOut: acc.tokensOut + meta.tokensOut,"
+          },
+          {
+            "type": "add",
+            "content": "        costIn: acc.costIn + meta.costIn,"
+          },
+          {
+            "type": "add",
+            "content": "        costOut: acc.costOut + meta.costOut,"
+          },
+          {
+            "type": "add",
+            "content": "      };"
+          },
+          {
+            "type": "add",
+            "content": "    },"
+          },
+          {
+            "type": "add",
+            "content": "    {tokensIn: 0, tokensOut: 0, costIn: 0, costOut: 0}"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const kernelRef = React.useRef<NotebookKernel | null>(null);"
+          },
+          {
+            "type": "add",
+            "content": "  const [isLoaded, setIsLoaded] = useState(false);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  useEffect(() => {"
+          },
+          {
+            "type": "add",
+            "content": "    kernelRef.current = new NotebookKernel();"
+          },
+          {
+            "type": "add",
+            "content": "    kernelRef.current.loadBook(notebook);"
+          },
+          {
+            "type": "add",
+            "content": "    kernelRef.current.onSave = (e) => {"
+          },
+          {
+            "type": "add",
+            "content": "      saveNotebook(e);"
+          },
+          {
+            "type": "add",
+            "content": "    };"
+          },
+          {
+            "type": "add",
+            "content": "    setIsLoaded(true);"
+          },
+          {
+            "type": "add",
+            "content": "  }, [notebook, saveNotebook]);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const [editSchema, setEditSchema] = useState(false);"
+          },
+          {
+            "type": "add",
+            "content": "  return ("
+          },
+          {
+            "type": "add",
+            "content": "    <div className=\"flex-1 overflow-auto bg-[#1e1e1e]\">"
+          },
+          {
+            "type": "add",
+            "content": "      <header className=\"bg-[#3c3c3c] text-[#cccccc] p-4 flex justify-between items-center\">"
+          },
+          {
+            "type": "add",
+            "content": "        <h1 className=\"text-2xl font-normal\">{notebook?.metadata.title ?? '[Untitled Notebook]'}</h1>"
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"flex space-x-2\">"
+          },
+          {
+            "type": "add",
+            "content": "          <button"
+          },
+          {
+            "type": "add",
+            "content": "            onClick={() => {"
+          },
+          {
+            "type": "add",
+            "content": "              setEditSchema(!editSchema);"
+          },
+          {
+            "type": "add",
+            "content": "            }}"
+          },
+          {
+            "type": "add",
+            "content": "            className=\"bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded flex items-center\""
+          },
+          {
+            "type": "add",
+            "content": "          >"
+          },
+          {
+            "type": "add",
+            "content": "            Show schema"
+          },
+          {
+            "type": "add",
+            "content": "          </button>"
+          },
+          {
+            "type": "add",
+            "content": "          <button"
+          },
+          {
+            "type": "add",
+            "content": "            onClick={() => {"
+          },
+          {
+            "type": "add",
+            "content": "              const name = prompt('Enter the name of the new cell');"
+          },
+          {
+            "type": "add",
+            "content": "              if (name) {"
+          },
+          {
+            "type": "add",
+            "content": "                kernelRef.current?.addCell(name);"
+          },
+          {
+            "type": "add",
+            "content": "              }"
+          },
+          {
+            "type": "add",
+            "content": "            }}"
+          },
+          {
+            "type": "add",
+            "content": "            className=\"bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded flex items-center\""
+          },
+          {
+            "type": "add",
+            "content": "          >"
+          },
+          {
+            "type": "add",
+            "content": "            Add Cell"
+          },
+          {
+            "type": "add",
+            "content": "          </button>"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "      </header>"
+          },
+          {
+            "type": "add",
+            "content": "      <div className=\"p-6\">"
+          },
+          {
+            "type": "add",
+            "content": "        {editSchema && ("
+          },
+          {
+            "type": "add",
+            "content": "          <div className=\"mb-6\">"
+          },
+          {
+            "type": "add",
+            "content": "            <Editor"
+          },
+          {
+            "type": "add",
+            "content": "              options={{wordWrap: 'on', theme: 'vs-dark'}}"
+          },
+          {
+            "type": "add",
+            "content": "              height=\"50vh\""
+          },
+          {
+            "type": "add",
+            "content": "              defaultLanguage=\"json\""
+          },
+          {
+            "type": "add",
+            "content": "              defaultValue={JSON.stringify(notebook, null, 2)}"
+          },
+          {
+            "type": "add",
+            "content": "              onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                DebounceUtils.debounce('editCode', 1000, () => {"
+          },
+          {
+            "type": "add",
+            "content": "                  try {"
+          },
+          {
+            "type": "add",
+            "content": "                    saveNotebook(JSON.parse(e!));"
+          },
+          {
+            "type": "add",
+            "content": "                  } catch (e) {"
+          },
+          {
+            "type": "add",
+            "content": "                    console.error(e);"
+          },
+          {
+            "type": "add",
+            "content": "                  }"
+          },
+          {
+            "type": "add",
+            "content": "                });"
+          },
+          {
+            "type": "add",
+            "content": "              }}"
+          },
+          {
+            "type": "add",
+            "content": "              className=\"border border-[#3c3c3c] rounded-lg shadow-sm\""
+          },
+          {
+            "type": "add",
+            "content": "            />"
+          },
+          {
+            "type": "add",
+            "content": "          </div>"
+          },
+          {
+            "type": "add",
+            "content": "        )}"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "        {isLoaded && ("
+          },
+          {
+            "type": "add",
+            "content": "          <NotebookKernelContext.Provider value={kernelRef.current}>"
+          },
+          {
+            "type": "add",
+            "content": "            <div className=\"space-y-4\">"
+          },
+          {
+            "type": "add",
+            "content": "              {notebook.cells.map((cell, index) => ("
+          },
+          {
+            "type": "add",
+            "content": "                <CellContainer"
+          },
+          {
+            "type": "add",
+            "content": "                  key={index}"
+          },
+          {
+            "type": "add",
+            "content": "                  cell={cell}"
+          },
+          {
+            "type": "add",
+            "content": "                  onSave={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                    if (!e) {"
+          },
+          {
+            "type": "add",
+            "content": "                      kernelRef.current?.removeCell(cell.input.id);"
+          },
+          {
+            "type": "add",
+            "content": "                    } else {"
+          },
+          {
+            "type": "add",
+            "content": "                      kernelRef.current?.updateCell(e);"
+          },
+          {
+            "type": "add",
+            "content": "                    }"
+          },
+          {
+            "type": "add",
+            "content": "                  }}"
+          },
+          {
+            "type": "add",
+            "content": "                  onMove={(cell, direction) => {"
+          },
+          {
+            "type": "add",
+            "content": "                    kernelRef.current?.moveCell(cell.input.id, direction);"
+          },
+          {
+            "type": "add",
+            "content": "                  }}"
+          },
+          {
+            "type": "add",
+            "content": "                />"
+          },
+          {
+            "type": "add",
+            "content": "              ))}"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "          </NotebookKernelContext.Provider>"
+          },
+          {
+            "type": "add",
+            "content": "        )}"
+          },
+          {
+            "type": "add",
+            "content": "      </div>"
+          },
+          {
+            "type": "add",
+            "content": "    </div>"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": "};"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "const NotebookKernelContext = React.createContext<NotebookKernel | null>(null);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "const CellContainer = ({"
+          },
+          {
+            "type": "add",
+            "content": "  cell,"
+          },
+          {
+            "type": "add",
+            "content": "  onSave,"
+          },
+          {
+            "type": "add",
+            "content": "  onMove,"
+          },
+          {
+            "type": "add",
+            "content": "}: {"
+          },
+          {
+            "type": "add",
+            "content": "  cell: Notebook['cells'][number];"
+          },
+          {
+            "type": "add",
+            "content": "  onSave: (value: NotebookCell | null) => void;"
+          },
+          {
+            "type": "add",
+            "content": "  onMove: (value: NotebookCell, direction: 'up' | 'down') => void;"
+          },
+          {
+            "type": "add",
+            "content": "}) => {"
+          },
+          {
+            "type": "add",
+            "content": "  const kernel = useContext(NotebookKernelContext);"
+          },
+          {
+            "type": "add",
+            "content": "  const [isExpanded, setIsExpanded] = React.useState(false);"
+          },
+          {
+            "type": "add",
+            "content": "  const [showOutputs, setShowOutputs] = useState(false);"
+          },
+          {
+            "type": "add",
+            "content": "  const [processing, setProcessing] = useState(false);"
+          },
+          {
+            "type": "add",
+            "content": "  return ("
+          },
+          {
+            "type": "add",
+            "content": "    <div className=\"border border-[#3c3c3c] rounded-lg overflow-hidden shadow-md\">"
+          },
+          {
+            "type": "add",
+            "content": "      <div className=\"bg-[#2d2d2d] p-2 flex justify-between items-center\">"
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"flex items-center space-x-2\">"
+          },
+          {
+            "type": "add",
+            "content": "          <button onClick={() => setIsExpanded(!isExpanded)} className=\"text-[#cccccc] hover:text-white\">"
+          },
+          {
+            "type": "add",
+            "content": "            {isExpanded ? <ChevronDownIcon className=\"h-5 w-5\" /> : <ChevronRightIcon className=\"h-5 w-5\" />}"
+          },
+          {
+            "type": "add",
+            "content": "          </button>"
+          },
+          {
+            "type": "add",
+            "content": "          <span className=\"font-normal\">{cell.input.id}</span>"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"flex space-x-2\">"
+          },
+          {
+            "type": "add",
+            "content": "          <button"
+          },
+          {
+            "type": "add",
+            "content": "            onClick={() => onMove(cell, 'up')}"
+          },
+          {
+            "type": "add",
+            "content": "            className=\"bg-[#3c3c3c] text-[#cccccc] px-2 py-1 rounded hover:bg-[#505050]\""
+          },
+          {
+            "type": "add",
+            "content": "          >"
+          },
+          {
+            "type": "add",
+            "content": "            <ChevronUpIcon className=\"h-5 w-5\" />"
+          },
+          {
+            "type": "add",
+            "content": "          </button>"
+          },
+          {
+            "type": "add",
+            "content": "          <button"
+          },
+          {
+            "type": "add",
+            "content": "            onClick={() => onMove(cell, 'down')}"
+          },
+          {
+            "type": "add",
+            "content": "            className=\"bg-[#3c3c3c] text-[#cccccc] px-2 py-1 rounded hover:bg-[#505050]\""
+          },
+          {
+            "type": "add",
+            "content": "          >"
+          },
+          {
+            "type": "add",
+            "content": "            <ChevronDownIcon className=\"h-5 w-5\" />"
+          },
+          {
+            "type": "add",
+            "content": "          </button>"
+          },
+          {
+            "type": "add",
+            "content": "          <button onClick={() => onSave(null)} className=\"bg-[#3c3c3c] text-[#cccccc] px-2 py-1 rounded hover:bg-[#505050]\">"
+          },
+          {
+            "type": "add",
+            "content": "            <TrashIcon className=\"h-5 w-5\" />"
+          },
+          {
+            "type": "add",
+            "content": "          </button>"
+          },
+          {
+            "type": "add",
+            "content": "          <button"
+          },
+          {
+            "type": "add",
+            "content": "            onClick={async () => {"
+          },
+          {
+            "type": "add",
+            "content": "              setProcessing(true);"
+          },
+          {
+            "type": "add",
+            "content": "              await kernel?.runCell(cell.input.id, true);"
+          },
+          {
+            "type": "add",
+            "content": "              setProcessing(false);"
+          },
+          {
+            "type": "add",
+            "content": "            }}"
+          },
+          {
+            "type": "add",
+            "content": "            className=\"bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded flex items-center\""
+          },
+          {
+            "type": "add",
+            "content": "          >"
+          },
+          {
+            "type": "add",
+            "content": "            <PlayIcon className=\"w-5 h-5 mr-2\" />"
+          },
+          {
+            "type": "add",
+            "content": "            {kernel?.cellHasOutput(cell.input.id) ? 'Re-run Cell' : 'Run Cell'}"
+          },
+          {
+            "type": "add",
+            "content": "          </button>"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "      </div>"
+          },
+          {
+            "type": "add",
+            "content": "      {isExpanded && ("
+          },
+          {
+            "type": "add",
+            "content": "        <>"
+          },
+          {
+            "type": "add",
+            "content": "          <CellInputComponent"
+          },
+          {
+            "type": "add",
+            "content": "            processing={processing}"
+          },
+          {
+            "type": "add",
+            "content": "            cellInput={cell.input}"
+          },
+          {
+            "type": "add",
+            "content": "            onSave={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "              cell.input = e;"
+          },
+          {
+            "type": "add",
+            "content": "              onSave(cell);"
+          },
+          {
+            "type": "add",
+            "content": "            }}"
+          },
+          {
+            "type": "add",
+            "content": "          />"
+          },
+          {
+            "type": "add",
+            "content": "          {cell.outputDetails && ("
+          },
+          {
+            "type": "add",
+            "content": "            <div className=\"border-t border-[#3c3c3c]\">"
+          },
+          {
+            "type": "add",
+            "content": "              <div className=\"bg-[#2d2d2d] p-2 flex justify-between items-center\">"
+          },
+          {
+            "type": "add",
+            "content": "                <span className=\"font-normal\">Output</span>"
+          },
+          {
+            "type": "add",
+            "content": "                <div className=\"flex space-x-2\">"
+          },
+          {
+            "type": "add",
+            "content": "                  <button onClick={() => setShowOutputs(!showOutputs)} className=\"text-[#cccccc] hover:text-white\">"
+          },
+          {
+            "type": "add",
+            "content": "                    {showOutputs ? <EyeSlashIcon className=\"h-6 w-6\" /> : <EyeIcon className=\"h-6 w-6\" />}"
+          },
+          {
+            "type": "add",
+            "content": "                  </button>"
+          },
+          {
+            "type": "add",
+            "content": "                  <button"
+          },
+          {
+            "type": "add",
+            "content": "                    onClick={() => {"
+          },
+          {
+            "type": "add",
+            "content": "                      const should = confirm('Are you sure you want to clear the outputs?');"
+          },
+          {
+            "type": "add",
+            "content": "                      if (should) {"
+          },
+          {
+            "type": "add",
+            "content": "                        kernel?.clearOutputs(cell.input.id);"
+          },
+          {
+            "type": "add",
+            "content": "                      }"
+          },
+          {
+            "type": "add",
+            "content": "                    }}"
+          },
+          {
+            "type": "add",
+            "content": "                    className=\"text-[#cccccc] hover:text-white\""
+          },
+          {
+            "type": "add",
+            "content": "                  >"
+          },
+          {
+            "type": "add",
+            "content": "                    <XCircleIcon className=\"h-6 w-6\" />"
+          },
+          {
+            "type": "add",
+            "content": "                  </button>"
+          },
+          {
+            "type": "add",
+            "content": "                  <button"
+          },
+          {
+            "type": "add",
+            "content": "                    onClick={() => {"
+          },
+          {
+            "type": "add",
+            "content": "                      const should = confirm('Are you sure you want to download the outputs?');"
+          },
+          {
+            "type": "add",
+            "content": "                      if (should) {"
+          },
+          {
+            "type": "add",
+            "content": "                        kernel?.downloadOutputs(cell.input.id);"
+          },
+          {
+            "type": "add",
+            "content": "                      }"
+          },
+          {
+            "type": "add",
+            "content": "                    }}"
+          },
+          {
+            "type": "add",
+            "content": "                    className=\"text-[#cccccc] hover:text-white\""
+          },
+          {
+            "type": "add",
+            "content": "                  >"
+          },
+          {
+            "type": "add",
+            "content": "                    <ArrowDownTrayIcon className=\"h-6 w-6\" />"
+          },
+          {
+            "type": "add",
+            "content": "                  </button>"
+          },
+          {
+            "type": "add",
+            "content": "                </div>"
+          },
+          {
+            "type": "add",
+            "content": "              </div>"
+          },
+          {
+            "type": "add",
+            "content": "              {showOutputs ? ("
+          },
+          {
+            "type": "add",
+            "content": "                <div className={'p-4'}>"
+          },
+          {
+            "type": "add",
+            "content": "                  {cell.outputDetails &&"
+          },
+          {
+            "type": "add",
+            "content": "                    (cell.outputDetails.hasMultipleOutputs ? ("
+          },
+          {
+            "type": "add",
+            "content": "                      <div className=\"space-y-4\">"
+          },
+          {
+            "type": "add",
+            "content": "                        {cell.outputDetails.outputs.map((output, index) => ("
+          },
+          {
+            "type": "add",
+            "content": "                          <Fragment key={index}>"
+          },
+          {
+            "type": "add",
+            "content": "                            <CellOutputComponent outputIndex={index} output={output} input={cell.input} />"
+          },
+          {
+            "type": "add",
+            "content": "                            <button"
+          },
+          {
+            "type": "add",
+            "content": "                              onClick={async () => {"
+          },
+          {
+            "type": "add",
+            "content": "                                await kernel?.rerunCellOutput(cell.input.id, index, true);"
+          },
+          {
+            "type": "add",
+            "content": "                              }}"
+          },
+          {
+            "type": "add",
+            "content": "                              className=\"bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded\""
+          },
+          {
+            "type": "add",
+            "content": "                            >"
+          },
+          {
+            "type": "add",
+            "content": "                              <PlayIcon className=\"w-5 h-5 mr-2 inline\" />"
+          },
+          {
+            "type": "add",
+            "content": "                              Re-run output"
+          },
+          {
+            "type": "add",
+            "content": "                            </button>"
+          },
+          {
+            "type": "add",
+            "content": "                          </Fragment>"
+          },
+          {
+            "type": "add",
+            "content": "                        ))}"
+          },
+          {
+            "type": "add",
+            "content": "                      </div>"
+          },
+          {
+            "type": "add",
+            "content": "                    ) : ("
+          },
+          {
+            "type": "add",
+            "content": "                      <CellOutputComponent output={cell.outputDetails.output} input={cell.input} />"
+          },
+          {
+            "type": "add",
+            "content": "                    ))}"
+          },
+          {
+            "type": "add",
+            "content": "                </div>"
+          },
+          {
+            "type": "add",
+            "content": "              ) : ("
+          },
+          {
+            "type": "add",
+            "content": "                <div className=\"text-[#cccccc] p-4\">"
+          },
+          {
+            "type": "add",
+            "content": "                  Has{' '}"
+          },
+          {
+            "type": "add",
+            "content": "                  {cell.outputDetails?.hasMultipleOutputs"
+          },
+          {
+            "type": "add",
+            "content": "                    ? cell.outputDetails.outputs.length"
+          },
+          {
+            "type": "add",
+            "content": "                    : cell.outputDetails?.output"
+          },
+          {
+            "type": "add",
+            "content": "                    ? 1"
+          },
+          {
+            "type": "add",
+            "content": "                    : 0}{' '}"
+          },
+          {
+            "type": "add",
+            "content": "                  output(s)"
+          },
+          {
+            "type": "add",
+            "content": "                </div>"
+          },
+          {
+            "type": "add",
+            "content": "              )}"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "          )}"
+          },
+          {
+            "type": "add",
+            "content": "        </>"
+          },
+          {
+            "type": "add",
+            "content": "      )}"
+          },
+          {
+            "type": "add",
+            "content": "    </div>"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": "};"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "export const CellTypeComponent = ({"
+          },
+          {
+            "type": "add",
+            "content": "  cellType,"
+          },
+          {
+            "type": "add",
+            "content": "  dependencies,"
+          },
+          {
+            "type": "add",
+            "content": "}: {"
+          },
+          {
+            "type": "add",
+            "content": "  cellType: CellTypes | undefined;"
+          },
+          {
+            "type": "add",
+            "content": "  dependencies: CellDependencies | undefined;"
+          },
+          {
+            "type": "add",
+            "content": "}) => {"
+          },
+          {
+            "type": "add",
+            "content": "}) => {"
+          },
+          {
+            "type": "add",
+            "content": "}) => {Certainly, I'll continue with the modifications:"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "export const CellTypeComponent = ({"
+          },
+          {
+            "type": "add",
+            "content": "  cellType,"
+          },
+          {
+            "type": "add",
+            "content": "  dependencies,"
+          },
+          {
+            "type": "add",
+            "content": "}: {"
+          },
+          {
+            "type": "add",
+            "content": "  cellType: CellTypes | undefined;"
+          },
+          {
+            "type": "add",
+            "content": "  dependencies: CellDependencies | undefined;"
+          },
+          {
+            "type": "add",
+            "content": "}) => {"
+          },
+          {
+            "type": "add",
+            "content": "  const kernel = useContext(NotebookKernelContext);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const [dependenciesValues, setDependenciesValues] = useState<CellDependencyValues | undefined>(undefined);"
+          },
+          {
+            "type": "add",
+            "content": "  useEffectAsync(async () => {"
+          },
+          {
+            "type": "add",
+            "content": "    if (!kernel) return;"
+          },
+          {
+            "type": "add",
+            "content": "    const result = await kernel.fillDependencies(dependencies, false);"
+          },
+          {
+            "type": "add",
+            "content": "    setDependenciesValues(result[0]);"
+          },
+          {
+            "type": "add",
+            "content": "  }, [dependencies, kernel, kernel?.notebook]);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const [showPrompt, setShowPrompt] = useState(true);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  if (!cellType) return <>Undefined</>;"
+          },
+          {
+            "type": "add",
+            "content": "  switch (cellType.type) {"
+          },
+          {
+            "type": "add",
+            "content": "    case 'number':"
+          },
+          {
+            "type": "add",
+            "content": "      return <p className=\"text-lg font-normal text-[#d4d4d4]\">{cellType.value}</p>;"
+          },
+          {
+            "type": "add",
+            "content": "    case 'image':"
+          },
+          {
+            "type": "add",
+            "content": "      return ("
+          },
+          {
+            "type": "add",
+            "content": "        <img"
+          },
+          {
+            "type": "add",
+            "content": "          src={getImagePath(cellType.content, kernel?.notebook)}"
+          },
+          {
+            "type": "add",
+            "content": "          alt=\"Input\""
+          },
+          {
+            "type": "add",
+            "content": "          className=\"max-w-full h-auto rounded-lg shadow-md\""
+          },
+          {
+            "type": "add",
+            "content": "        />"
+          },
+          {
+            "type": "add",
+            "content": "      );"
+          },
+          {
+            "type": "add",
+            "content": "    case 'video':"
+          },
+          {
+            "type": "add",
+            "content": "      return ("
+          },
+          {
+            "type": "add",
+            "content": "        <video"
+          },
+          {
+            "type": "add",
+            "content": "          src={getImagePath(cellType.content, kernel?.notebook)}"
+          },
+          {
+            "type": "add",
+            "content": "          className=\"max-w-full h-auto rounded-lg shadow-md\""
+          },
+          {
+            "type": "add",
+            "content": "          controls"
+          },
+          {
+            "type": "add",
+            "content": "          muted"
+          },
+          {
+            "type": "add",
+            "content": "          autoPlay"
+          },
+          {
+            "type": "add",
+            "content": "        />"
+          },
+          {
+            "type": "add",
+            "content": "      );"
+          },
+          {
+            "type": "add",
+            "content": "    case 'webpage':"
+          },
+          {
+            "type": "add",
+            "content": "      return <iframe src={cellType.content} className=\"w-full h-64 border-0 rounded-lg shadow-md\" />;"
+          },
+          {
+            "type": "add",
+            "content": "    case 'json':"
+          },
+          {
+            "type": "add",
+            "content": "      return <JsonViewer json={JSON.parse(cellType.value)} />;"
+          },
+          {
+            "type": "add",
+            "content": "    case 'array':"
+          },
+          {
+            "type": "add",
+            "content": "      return ("
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"space-y-4 pl-4\">"
+          },
+          {
+            "type": "add",
+            "content": "          {cellType.values.map((value, index) => ("
+          },
+          {
+            "type": "add",
+            "content": "            <CellTypeComponent key={index} cellType={value} dependencies={dependencies} />"
+          },
+          {
+            "type": "add",
+            "content": "          ))}"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "      );"
+          },
+          {
+            "type": "add",
+            "content": "    case 'table':"
+          },
+          {
+            "type": "add",
+            "content": "      return ("
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"overflow-x-auto\">"
+          },
+          {
+            "type": "add",
+            "content": "          <table className=\"w-full\">"
+          },
+          {
+            "type": "add",
+            "content": "            <tbody>"
+          },
+          {
+            "type": "add",
+            "content": "              {cellType.cells.map((row, rowIndex) => ("
+          },
+          {
+            "type": "add",
+            "content": "                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-[#2d2d2d]' : 'bg-[#1e1e1e]'}>"
+          },
+          {
+            "type": "add",
+            "content": "                  {row.map((cell, cellIndex) => ("
+          },
+          {
+            "type": "add",
+            "content": "                    <td key={cellIndex} className=\"border border-[#3c3c3c] px-4 py-2\">"
+          },
+          {
+            "type": "add",
+            "content": "                      {processWithDependencies(cell, dependenciesValues)}"
+          },
+          {
+            "type": "add",
+            "content": "                    </td>"
+          },
+          {
+            "type": "add",
+            "content": "                  ))}"
+          },
+          {
+            "type": "add",
+            "content": "                </tr>"
+          },
+          {
+            "type": "add",
+            "content": "              ))}"
+          },
+          {
+            "type": "add",
+            "content": "            </tbody>"
+          },
+          {
+            "type": "add",
+            "content": "          </table>"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "      );"
+          },
+          {
+            "type": "add",
+            "content": "    case 'markdown':"
+          },
+          {
+            "type": "add",
+            "content": "      return ("
+          },
+          {
+            "type": "add",
+            "content": "        <Markdown className=\"prose prose-invert max-w-none\">"
+          },
+          {
+            "type": "add",
+            "content": "          {processWithDependencies(cellType.content, dependenciesValues)}"
+          },
+          {
+            "type": "add",
+            "content": "        </Markdown>"
+          },
+          {
+            "type": "add",
+            "content": "      );"
+          },
+          {
+            "type": "add",
+            "content": "    case 'code':"
+          },
+          {
+            "type": "add",
+            "content": "      return ("
+          },
+          {
+            "type": "add",
+            "content": "        <pre className=\"bg-[#1e1e1e] text-[#d4d4d4] p-4 rounded-lg overflow-x-auto\">"
+          },
+          {
+            "type": "add",
+            "content": "          <code"
+          },
+          {
+            "type": "add",
+            "content": "            className={'theme-github-dark'}"
+          },
+          {
+            "type": "add",
+            "content": "            dangerouslySetInnerHTML={{"
+          },
+          {
+            "type": "add",
+            "content": "              __html: hljs.highlight(cellType.content, {language: 'javascript'}).value,"
+          },
+          {
+            "type": "add",
+            "content": "            }}"
+          },
+          {
+            "type": "add",
+            "content": "          ></code>"
+          },
+          {
+            "type": "add",
+            "content": "        </pre>"
+          },
+          {
+            "type": "add",
+            "content": "      );"
+          },
+          {
+            "type": "add",
+            "content": "    case 'aiPrompt':"
+          },
+          {
+            "type": "add",
+            "content": "      return ("
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"bg-[#2d2d2d] p-4 rounded-lg\">"
+          },
+          {
+            "type": "add",
+            "content": "          <p className=\"font-normal mb-2\">Raw Prompt:</p>"
+          },
+          {
+            "type": "add",
+            "content": "          <Markdown className=\"prose prose-invert px-5 max-w-none mb-4\">{cellType.prompt}</Markdown>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "          <p className=\"font-normal mb-1\">"
+          },
+          {
+            "type": "add",
+            "content": "            Model: <span className=\"font-light\">{cellType.model}</span>"
+          },
+          {
+            "type": "add",
+            "content": "          </p>"
+          },
+          {
+            "type": "add",
+            "content": "          <p className=\"font-normal mb-1\">"
+          },
+          {
+            "type": "add",
+            "content": "            Temperature: <span className=\"font-light\">{cellType.temperature || 'N/A'}</span>"
+          },
+          {
+            "type": "add",
+            "content": "          </p>"
+          },
+          {
+            "type": "add",
+            "content": "          <p className=\"font-normal\">"
+          },
+          {
+            "type": "add",
+            "content": "            Schema: <span className=\"font-light\">{cellType.schema || 'N/A'}</span>"
+          },
+          {
+            "type": "add",
+            "content": "          </p>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "          {dependenciesValues && cellType.prompt.includes('{{') && ("
+          },
+          {
+            "type": "add",
+            "content": "            <div"
+          },
+          {
+            "type": "add",
+            "content": "              className={'p-10'}"
+          },
+          {
+            "type": "add",
+            "content": "              onClick={() => {"
+          },
+          {
+            "type": "add",
+            "content": "                setShowPrompt(!showPrompt);"
+          },
+          {
+            "type": "add",
+            "content": "              }}"
+          },
+          {
+            "type": "add",
+            "content": "            >"
+          },
+          {
+            "type": "add",
+            "content": "              <p className=\"font-normal mb-2\">Prompt:</p>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "              {showPrompt && ("
+          },
+          {
+            "type": "add",
+            "content": "                <Markdown className=\"prose prose-invert px-5 max-w-none mb-4\">"
+          },
+          {
+            "type": "add",
+            "content": "                  {processWithDependencies(cellType.prompt, dependenciesValues)}"
+          },
+          {
+            "type": "add",
+            "content": "                </Markdown>"
+          },
+          {
+            "type": "add",
+            "content": "              )}"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "          )}"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "      );"
+          },
+          {
+            "type": "add",
+            "content": "    case 'aiImagePrompt':"
+          },
+          {
+            "type": "add",
+            "content": "      return ("
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"bg-[#2d2d2d] p-4 rounded-lg\">"
+          },
+          {
+            "type": "add",
+            "content": "          <p className=\"font-normal mb-2\">Image Prompt:</p>"
+          },
+          {
+            "type": "add",
+            "content": "          <Markdown className=\"prose prose-invert px-5 max-w-none mb-4\">{cellType.prompt}</Markdown>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "          <p className=\"font-normal mb-1\">"
+          },
+          {
+            "type": "add",
+            "content": "            Image Model: <span className=\"font-light\">{cellType.model}</span>"
+          },
+          {
+            "type": "add",
+            "content": "          </p>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "          {dependenciesValues && cellType.prompt.includes('{{') && ("
+          },
+          {
+            "type": "add",
+            "content": "            <div"
+          },
+          {
+            "type": "add",
+            "content": "              className={'p-10'}"
+          },
+          {
+            "type": "add",
+            "content": "              onClick={() => {"
+          },
+          {
+            "type": "add",
+            "content": "                setShowPrompt(!showPrompt);"
+          },
+          {
+            "type": "add",
+            "content": "              }}"
+          },
+          {
+            "type": "add",
+            "content": "            >"
+          },
+          {
+            "type": "add",
+            "content": "              <p className=\"font-normal mb-2\">Prompt:</p>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "              {showPrompt && ("
+          },
+          {
+            "type": "add",
+            "content": "                <Markdown className=\"prose prose-invert px-5 max-w-none mb-4\">"
+          },
+          {
+            "type": "add",
+            "content": "                  {processWithDependencies(cellType.prompt, dependenciesValues)}"
+          },
+          {
+            "type": "add",
+            "content": "                </Markdown>"
+          },
+          {
+            "type": "add",
+            "content": "              )}"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "          )}"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "      );"
+          },
+          {
+            "type": "add",
+            "content": "    default:"
+          },
+          {
+            "type": "add",
+            "content": "      return <p className=\"text-red-500\">Unsupported input type: {cellType.type}</p>;"
+          },
+          {
+            "type": "add",
+            "content": "  }"
+          },
+          {
+            "type": "add",
+            "content": "};"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "function CellTypeComponentEditable({"
+          },
+          {
+            "type": "add",
+            "content": "  cellType,"
+          },
+          {
+            "type": "add",
+            "content": "  onSave,"
+          },
+          {
+            "type": "add",
+            "content": "}: {"
+          },
+          {
+            "type": "add",
+            "content": "  cellType: CellTypes | undefined;"
+          },
+          {
+            "type": "add",
+            "content": "  onSave: (cellType: CellTypes) => void;"
+          },
+          {
+            "type": "add",
+            "content": "}) {"
+          },
+          {
+            "type": "add",
+            "content": "  const renderCellTypes = () => {"
+          },
+          {
+            "type": "add",
+            "content": "    if (!cellType) return null;"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "    switch (cellType.type) {"
+          },
+          {
+            "type": "add",
+            "content": "      case 'number':"
+          },
+          {
+            "type": "add",
+            "content": "        return ("
+          },
+          {
+            "type": "add",
+            "content": "          <input"
+          },
+          {
+            "type": "add",
+            "content": "            type=\"number\""
+          },
+          {
+            "type": "add",
+            "content": "            value={cellType.value}"
+          },
+          {
+            "type": "add",
+            "content": "            onChange={(e) => onSave({type: 'number', value: parseFloat(e.target.value)})}"
+          },
+          {
+            "type": "add",
+            "content": "            className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 w-full\""
+          },
+          {
+            "type": "add",
+            "content": "          />"
+          },
+          {
+            "type": "add",
+            "content": "        );"
+          },
+          {
+            "type": "add",
+            "content": "      case 'image':"
+          },
+          {
+            "type": "add",
+            "content": "        return ("
+          },
+          {
+            "type": "add",
+            "content": "          <input"
+          },
+          {
+            "type": "add",
+            "content": "            type=\"text\""
+          },
+          {
+            "type": "add",
+            "content": "            value={cellType.content}"
+          },
+          {
+            "type": "add",
+            "content": "            onChange={(e) => onSave({type: 'image', content: e.target.value})}"
+          },
+          {
+            "type": "add",
+            "content": "            className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 w-full\""
+          },
+          {
+            "type": "add",
+            "content": "          />"
+          },
+          {
+            "type": "add",
+            "content": "        );"
+          },
+          {
+            "type": "add",
+            "content": "      case 'video':"
+          },
+          {
+            "type": "add",
+            "content": "        return ("
+          },
+          {
+            "type": "add",
+            "content": "          <input"
+          },
+          {
+            "type": "add",
+            "content": "            type=\"text\""
+          },
+          {
+            "type": "add",
+            "content": "            value={cellType.content}"
+          },
+          {
+            "type": "add",
+            "content": "            onChange={(e) => onSave({type: 'video', content: e.target.value})}"
+          },
+          {
+            "type": "add",
+            "content": "            className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 w-full\""
+          },
+          {
+            "type": "add",
+            "content": "          />"
+          },
+          {
+            "type": "add",
+            "content": "        );"
+          },
+          {
+            "type": "add",
+            "content": "      case 'webpage':"
+          },
+          {
+            "type": "add",
+            "content": "        return <p className=\"text-[#cccccc] italic\">Not editable</p>;"
+          },
+          {
+            "type": "add",
+            "content": "      case 'json':"
+          },
+          {
+            "type": "add",
+            "content": "        return ("
+          },
+          {
+            "type": "add",
+            "content": "          <EditableJsonViewer"
+          },
+          {
+            "type": "add",
+            "content": "            json={JSON.parse(cellType.value)}"
+          },
+          {
+            "type": "add",
+            "content": "            onUpdate={(e) => onSave({type: 'json', value: JSON.stringify(e)})}"
+          },
+          {
+            "type": "add",
+            "content": "          />"
+          },
+          {
+            "type": "add",
+            "content": "        );"
+          },
+          {
+            "type": "add",
+            "content": "      case 'array':"
+          },
+          {
+            "type": "add",
+            "content": "        return ("
+          },
+          {
+            "type": "add",
+            "content": "          <div className=\"space-y-4 pl-4\">"
+          },
+          {
+            "type": "add",
+            "content": "            {cellType.values.map((value, index) => ("
+          },
+          {
+            "type": "add",
+            "content": "              <CellTypeComponentEditable"
+          },
+          {
+            "type": "add",
+            "content": "                key={index}"
+          },
+          {
+            "type": "add",
+            "content": "                cellType={value}"
+          },
+          {
+            "type": "add",
+            "content": "                onSave={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                  const newValues = [...cellType.values];"
+          },
+          {
+            "type": "add",
+            "content": "                  newValues[index] = e;"
+          },
+          {
+            "type": "add",
+            "content": "                  onSave({...cellType, values: newValues});"
+          },
+          {
+            "type": "add",
+            "content": "                }}"
+          },
+          {
+            "type": "add",
+            "content": "              />"
+          },
+          {
+            "type": "add",
+            "content": "            ))}"
+          },
+          {
+            "type": "add",
+            "content": "          </div>"
+          },
+          {
+            "type": "add",
+            "content": "        );"
+          },
+          {
+            "type": "add",
+            "content": "      case 'table':"
+          },
+          {
+            "type": "add",
+            "content": "        return <p className=\"text-[#cccccc] italic\">Not editable yet</p>;"
+          },
+          {
+            "type": "add",
+            "content": "      case 'markdown':"
+          },
+          {
+            "type": "add",
+            "content": "      case 'code':"
+          },
+          {
+            "type": "add",
+            "content": "        return ("
+          },
+          {
+            "type": "add",
+            "content": "          <Editor"
+          },
+          {
+            "type": "add",
+            "content": "            options={{wordWrap: 'on', theme: 'vs-dark'}}"
+          },
+          {
+            "type": "add",
+            "content": "            height=\"50vh\""
+          },
+          {
+            "type": "add",
+            "content": "            defaultLanguage={cellType.type === 'markdown' ? 'markdown' : 'javascript'}"
+          },
+          {
+            "type": "add",
+            "content": "            defaultValue={cellType.content}"
+          },
+          {
+            "type": "add",
+            "content": "            onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "              DebounceUtils.debounce('editCode', 1000, () => {"
+          },
+          {
+            "type": "add",
+            "content": "                onSave({type: cellType.type, content: e || ''});"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "            }}"
+          },
+          {
+            "type": "add",
+            "content": "            className=\"border border-[#3c3c3c] rounded-lg\""
+          },
+          {
+            "type": "add",
+            "content": "          />"
+          },
+          {
+            "type": "add",
+            "content": "        );"
+          },
+          {
+            "type": "add",
+            "content": "      case 'aiPrompt':"
+          },
+          {
+            "type": "add",
+            "content": "        return ("
+          },
+          {
+            "type": "add",
+            "content": "          <div className=\"space-y-4\">"
+          },
+          {
+            "type": "add",
+            "content": "            <div>"
+          },
+          {
+            "type": "add",
+            "content": "              <label className=\"block text-sm font-normal text-[#d4d4d4] mb-1\">Prompt:</label>"
+          },
+          {
+            "type": "add",
+            "content": "              <Editor"
+          },
+          {
+            "type": "add",
+            "content": "                options={{wordWrap: 'on', theme: 'vs-dark'}}"
+          },
+          {
+            "type": "add",
+            "content": "                height=\"20vh\""
+          },
+          {
+            "type": "add",
+            "content": "                defaultLanguage=\"markdown\""
+          },
+          {
+            "type": "add",
+            "content": "                defaultValue={cellType.prompt}"
+          },
+          {
+            "type": "add",
+            "content": "                onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                  DebounceUtils.debounce('editCode', 1000, () => {"
+          },
+          {
+            "type": "add",
+            "content": "                    onSave({...cellType, prompt: e || ''});"
+          },
+          {
+            "type": "add",
+            "content": "                  });"
+          },
+          {
+            "type": "add",
+            "content": "                }}"
+          },
+          {
+            "type": "add",
+            "content": "                className=\"border border-[#3c3c3c] rounded-lg\""
+          },
+          {
+            "type": "add",
+            "content": "              />"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "            <div>"
+          },
+          {
+            "type": "add",
+            "content": "              <label className=\"block text-sm font-normal text-[#d4d4d4] mb-1\">Model:</label>"
+          },
+          {
+            "type": "add",
+            "content": "              <select"
+          },
+          {
+            "type": "add",
+            "content": "                value={cellType.model}"
+          },
+          {
+            "type": "add",
+            "content": "                onChange={(e) => onSave({...cellType, model: e.target.value})}"
+          },
+          {
+            "type": "add",
+            "content": "                className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 w-full\""
+          },
+          {
+            "type": "add",
+            "content": "              >"
+          },
+          {
+            "type": "add",
+            "content": "                <option value=\"\">none</option>"
+          },
+          {
+            "type": "add",
+            "content": "                <option value=\"claude-3-5-sonnet-20240620\">claude-3-5-sonnet-20240620</option>"
+          },
+          {
+            "type": "add",
+            "content": "                <option value=\"gpt-3.5-turbo-0125\">gpt-3.5-turbo-0125</option>"
+          },
+          {
+            "type": "add",
+            "content": "                <option value=\"gpt-4o\">gpt-4o</option>"
+          },
+          {
+            "type": "add",
+            "content": "              </select>"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "            <div>"
+          },
+          {
+            "type": "add",
+            "content": "              <label className=\"block text-sm font-normal text-[#d4d4d4] mb-1\">Temperature:</label>"
+          },
+          {
+            "type": "add",
+            "content": "              <input"
+          },
+          {
+            "type": "add",
+            "content": "                type=\"number\""
+          },
+          {
+            "type": "add",
+            "content": "                value={cellType.temperature}"
+          },
+          {
+            "type": "add",
+            "content": "                className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 w-full\""
+          },
+          {
+            "type": "add",
+            "content": "                step={0.1}"
+          },
+          {
+            "type": "add",
+            "content": "                min={0}"
+          },
+          {
+            "type": "add",
+            "content": "                max={2}"
+          },
+          {
+            "type": "add",
+            "content": "                onChange={(e) => onSave({...cellType, temperature: parseFloat(e.target.value)})}"
+          },
+          {
+            "type": "add",
+            "content": "              />"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "            <div>"
+          },
+          {
+            "type": "add",
+            "content": "              <label className=\"block text-sm font-normal text-[#d4d4d4] mb-1\">Schema:</label>"
+          },
+          {
+            "type": "add",
+            "content": "              <input"
+          },
+          {
+            "type": "add",
+            "content": "                type=\"text\""
+          },
+          {
+            "type": "add",
+            "content": "                value={cellType.schema}"
+          },
+          {
+            "type": "add",
+            "content": "                className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 w-full\""
+          },
+          {
+            "type": "add",
+            "content": "                onChange={(e) => onSave({...cellType, schema: e.target.value})}"
+          },
+          {
+            "type": "add",
+            "content": "              />"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "          </div>"
+          },
+          {
+            "type": "add",
+            "content": "        );"
+          },
+          {
+            "type": "add",
+            "content": "      case 'aiImagePrompt':"
+          },
+          {
+            "type": "add",
+            "content": "        return ("
+          },
+          {
+            "type": "add",
+            "content": "          <div className=\"space-y-4\">"
+          },
+          {
+            "type": "add",
+            "content": "            <div>"
+          },
+          {
+            "type": "add",
+            "content": "              <label className=\"block text-sm font-normal text-[#d4d4d4] mb-1\">Image Prompt:</label>"
+          },
+          {
+            "type": "add",
+            "content": "              <Editor"
+          },
+          {
+            "type": "add",
+            "content": "                options={{wordWrap: 'on', theme: 'vs-dark'}}"
+          },
+          {
+            "type": "add",
+            "content": "                height=\"20vh\""
+          },
+          {
+            "type": "add",
+            "content": "                defaultLanguage=\"markdown\""
+          },
+          {
+            "type": "add",
+            "content": "                defaultValue={cellType.prompt}"
+          },
+          {
+            "type": "add",
+            "content": "                onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                  DebounceUtils.debounce('editCode', 1000, () => {"
+          },
+          {
+            "type": "add",
+            "content": "                    onSave({...cellType, prompt: e || ''});"
+          },
+          {
+            "type": "add",
+            "content": "                  });"
+          },
+          {
+            "type": "add",
+            "content": "                }}"
+          },
+          {
+            "type": "add",
+            "content": "                className=\"border border-[#3c3c3c] rounded-lg\""
+          },
+          {
+            "type": "add",
+            "content": "              />"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "            <div>"
+          },
+          {
+            "type": "add",
+            "content": "              <label className=\"block text-sm font-normal text-[#d4d4d4] mb-1\">Model:</label>"
+          },
+          {
+            "type": "add",
+            "content": "              <select"
+          },
+          {
+            "type": "add",
+            "content": "                value={cellType.model}"
+          },
+          {
+            "type": "add",
+            "content": "                onChange={(e) => onSave({...cellType, model: e.target.value})}"
+          },
+          {
+            "type": "add",
+            "content": "                className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 w-full\""
+          },
+          {
+            "type": "add",
+            "content": "              >"
+          },
+          {
+            "type": "add",
+            "content": "                <option value=\"\">none</option>"
+          },
+          {
+            "type": "add",
+            "content": "                <option value=\"dall-e-3\">dall-e-3</option>"
+          },
+          {
+            "type": "add",
+            "content": "              </select>"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "            <div>"
+          },
+          {
+            "type": "add",
+            "content": "              <label className=\"block text-sm font-normal text-[#d4d4d4] mb-1\">Resize</label>"
+          },
+          {
+            "type": "add",
+            "content": "              <select"
+          },
+          {
+            "type": "add",
+            "content": "                value={cellType.resize ? `${cellType.resize.width}x${cellType.resize?.height}` : ''}"
+          },
+          {
+            "type": "add",
+            "content": "                onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                  const strings = e.target.value.split('x');"
+          },
+          {
+            "type": "add",
+            "content": "                  if (strings.length !== 2) return onSave({...cellType, resize: undefined});"
+          },
+          {
+            "type": "add",
+            "content": "                  return onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                    ...cellType,"
+          },
+          {
+            "type": "add",
+            "content": "                    resize: {"
+          },
+          {
+            "type": "add",
+            "content": "                      width: parseInt(strings[0]),"
+          },
+          {
+            "type": "add",
+            "content": "                      height: parseInt(strings[1]),"
+          },
+          {
+            "type": "add",
+            "content": "                    },"
+          },
+          {
+            "type": "add",
+            "content": "                  });"
+          },
+          {
+            "type": "add",
+            "content": "                }}"
+          },
+          {
+            "type": "add",
+            "content": "                className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 w-full\""
+          },
+          {
+            "type": "add",
+            "content": "              >"
+          },
+          {
+            "type": "add",
+            "content": "                <option value=\"\">none</option>"
+          },
+          {
+            "type": "add",
+            "content": "                <option value=\"128x128\">128x128</option>"
+          },
+          {
+            "type": "add",
+            "content": "                <option value=\"256x256\">256x256</option>"
+          },
+          {
+            "type": "add",
+            "content": "                <option value=\"512x512\">512x512</option>"
+          },
+          {
+            "type": "add",
+            "content": "              </select>"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "          </div>"
+          },
+          {
+            "type": "add",
+            "content": "        );"
+          },
+          {
+            "type": "add",
+            "content": "      default:"
+          },
+          {
+            "type": "add",
+            "content": "        return <p className=\"text-red-500\">Unsupported input type: {cellType.type}</p>;"
+          },
+          {
+            "type": "add",
+            "content": "    }"
+          },
+          {
+            "type": "add",
+            "content": "  };"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  return ("
+          },
+          {
+            "type": "add",
+            "content": "    <div className=\"space-y-4\">"
+          },
+          {
+            "type": "add",
+            "content": "      <select"
+          },
+          {
+            "type": "add",
+            "content": "        value={cellType?.type}"
+          },
+          {
+            "type": "add",
+            "content": "        onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "          const newCellType = e.target.value as CellTypes['type'];"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "          switch (newCellType) {"
+          },
+          {
+            "type": "add",
+            "content": "            case 'number':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'number',"
+          },
+          {
+            "type": "add",
+            "content": "                value: 0,"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            case 'image':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'image',"
+          },
+          {
+            "type": "add",
+            "content": "                content: '',"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            case 'video':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'video',"
+          },
+          {
+            "type": "add",
+            "content": "                content: '',"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            case 'webpage':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'webpage 'webpage 'webpageCertainly, I'll continue with the modifications:"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "            case 'webpage':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'webpage',"
+          },
+          {
+            "type": "add",
+            "content": "                content: '',"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            case 'json':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'json',"
+          },
+          {
+            "type": "add",
+            "content": "                value: '{}',"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            case 'array':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'array',"
+          },
+          {
+            "type": "add",
+            "content": "                values: [],"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            case 'table':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'table',"
+          },
+          {
+            "type": "add",
+            "content": "                cells: [[]],"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            case 'markdown':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'markdown',"
+          },
+          {
+            "type": "add",
+            "content": "                content: '',"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            case 'code':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'code',"
+          },
+          {
+            "type": "add",
+            "content": "                content: `function run(){"
+          },
+          {
+            "type": "add",
+            "content": "    return 0;"
+          },
+          {
+            "type": "add",
+            "content": "}`,"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            case 'aiPrompt':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'aiPrompt',"
+          },
+          {
+            "type": "add",
+            "content": "                prompt: '',"
+          },
+          {
+            "type": "add",
+            "content": "                schema: '',"
+          },
+          {
+            "type": "add",
+            "content": "                systemPrompt: '',"
+          },
+          {
+            "type": "add",
+            "content": "                model: '',"
+          },
+          {
+            "type": "add",
+            "content": "                temperature: 0.5,"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            case 'aiImagePrompt':"
+          },
+          {
+            "type": "add",
+            "content": "              onSave({"
+          },
+          {
+            "type": "add",
+            "content": "                type: 'aiImagePrompt',"
+          },
+          {
+            "type": "add",
+            "content": "                prompt: '',"
+          },
+          {
+            "type": "add",
+            "content": "                model: 'dall-e-3',"
+          },
+          {
+            "type": "add",
+            "content": "              });"
+          },
+          {
+            "type": "add",
+            "content": "              break;"
+          },
+          {
+            "type": "add",
+            "content": "            default:"
+          },
+          {
+            "type": "add",
+            "content": "              return unreachable(newCellType);"
+          },
+          {
+            "type": "add",
+            "content": "          }"
+          },
+          {
+            "type": "add",
+            "content": "        }}"
+          },
+          {
+            "type": "add",
+            "content": "        className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 w-full\""
+          },
+          {
+            "type": "add",
+            "content": "      >"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"number\">Number</option>"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"image\">Image</option>"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"video\">Video</option>"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"webpage\">Webpage</option>"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"json\">JSON</option>"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"array\">Array</option>"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"table\">Table</option>"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"markdown\">Markdown</option>"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"code\">Code</option>"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"aiPrompt\">AI Prompt</option>"
+          },
+          {
+            "type": "add",
+            "content": "        <option value=\"aiImagePrompt\">AI Image Prompt</option>"
+          },
+          {
+            "type": "add",
+            "content": "      </select>"
+          },
+          {
+            "type": "add",
+            "content": "      <div key={cellType?.type} className=\"space-y-4\">"
+          },
+          {
+            "type": "add",
+            "content": "        {renderCellTypes()}"
+          },
+          {
+            "type": "add",
+            "content": "      </div>"
+          },
+          {
+            "type": "add",
+            "content": "    </div>"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": "}"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "const CellInputComponent = ({"
+          },
+          {
+            "type": "add",
+            "content": "  cellInput,"
+          },
+          {
+            "type": "add",
+            "content": "  processing,"
+          },
+          {
+            "type": "add",
+            "content": "  onSave,"
+          },
+          {
+            "type": "add",
+            "content": "}: {"
+          },
+          {
+            "type": "add",
+            "content": "  processing: boolean;"
+          },
+          {
+            "type": "add",
+            "content": "  cellInput: CellInput;"
+          },
+          {
+            "type": "add",
+            "content": "  onSave: (value: CellInput) => void;"
+          },
+          {
+            "type": "add",
+            "content": "}) => {"
+          },
+          {
+            "type": "add",
+            "content": "  const [editing, setEditing] = useState(false);"
+          },
+          {
+            "type": "add",
+            "content": "  const kernel = useContext(NotebookKernelContext);"
+          },
+          {
+            "type": "add",
+            "content": "  const [editDependencies, setEditDependencies] = useState(false);"
+          },
+          {
+            "type": "add",
+            "content": "  return ("
+          },
+          {
+            "type": "add",
+            "content": "    <>"
+          },
+          {
+            "type": "add",
+            "content": "      <div className=\"bg-[#2d2d2d] p-2 flex justify-between items-center\">"
+          },
+          {
+            "type": "add",
+            "content": "        <span className=\"font-normal\">Input</span>"
+          },
+          {
+            "type": "add",
+            "content": "      </div>"
+          },
+          {
+            "type": "add",
+            "content": "      <div className={clsx('mb-6 p-4', processing && 'bg-[#352800]')}>"
+          },
+          {
+            "type": "add",
+            "content": "        {!editDependencies ? ("
+          },
+          {
+            "type": "add",
+            "content": "          <>"
+          },
+          {
+            "type": "add",
+            "content": "            {cellInput.dependencies && Object.keys(cellInput.dependencies).length > 0 && ("
+          },
+          {
+            "type": "add",
+            "content": "              <div className=\"bg-[#252526] border border-[#3c3c3c] rounded-lg p-3 mb-4\">"
+          },
+          {
+            "type": "add",
+            "content": "                <p className=\"font-normal text-[#d4d4d4] mb-2\">Dependencies:</p>"
+          },
+          {
+            "type": "add",
+            "content": "                <ul className=\"list-disc list-inside space-y-1\">"
+          },
+          {
+            "type": "add",
+            "content": "                  {Object.entries(cellInput.dependencies).map(([dependencyKey, dependency], index) => ("
+          },
+          {
+            "type": "add",
+            "content": "                    <li key={index} className=\"text-[#9cdcfe]\">"
+          },
+          {
+            "type": "add",
+            "content": "                      <strong>{dependencyKey}:</strong> {dependency.cellId} ({dependency.forEach ? 'Iterate' : 'Single'}"
+          },
+          {
+            "type": "add",
+            "content": "                      ) ({dependency.type}) {'field' in dependency && `(${dependency.field})`}"
+          },
+          {
+            "type": "add",
+            "content": "                    </li>"
+          },
+          {
+            "type": "add",
+            "content": "                  ))}"
+          },
+          {
+            "type": "add",
+            "content": "                </ul>"
+          },
+          {
+            "type": "add",
+            "content": "              </div>"
+          },
+          {
+            "type": "add",
+            "content": "            )}"
+          },
+          {
+            "type": "add",
+            "content": "          </>"
+          },
+          {
+            "type": "add",
+            "content": "        ) : ("
+          },
+          {
+            "type": "add",
+            "content": "          <div className=\"bg-[#252526] border border-[#3c3c3c] rounded-lg p-3 mb-4\">"
+          },
+          {
+            "type": "add",
+            "content": "            <p className=\"font-normal text-[#d4d4d4] mb-2\">Dependencies:</p>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "            <div className=\"space-y-2\">"
+          },
+          {
+            "type": "add",
+            "content": "              {cellInput.dependencies &&"
+          },
+          {
+            "type": "add",
+            "content": "                Object.entries(cellInput.dependencies).map(([depKey, dependency], index) => ("
+          },
+          {
+            "type": "add",
+            "content": "                  <div key={index} className=\"flex space-x-2\">"
+          },
+          {
+            "type": "add",
+            "content": "                    <input"
+          },
+          {
+            "type": "add",
+            "content": "                      type=\"text\""
+          },
+          {
+            "type": "add",
+            "content": "                      value={depKey}"
+          },
+          {
+            "type": "add",
+            "content": "                      onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                        const newDeps = {...cellInput.dependencies};"
+          },
+          {
+            "type": "add",
+            "content": "                        delete newDeps[depKey];"
+          },
+          {
+            "type": "add",
+            "content": "                        newDeps[e.target.value] = {"
+          },
+          {
+            "type": "add",
+            "content": "                          ...dependency,"
+          },
+          {
+            "type": "add",
+            "content": "                          cellId: dependency.cellId,"
+          },
+          {
+            "type": "add",
+            "content": "                        };"
+          },
+          {
+            "type": "add",
+            "content": "                        onSave({...cellInput, dependencies: newDeps});"
+          },
+          {
+            "type": "add",
+            "content": "                      }}"
+          },
+          {
+            "type": "add",
+            "content": "                      className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 flex-1\""
+          },
+          {
+            "type": "add",
+            "content": "                    />"
+          },
+          {
+            "type": "add",
+            "content": "                    <select"
+          },
+          {
+            "type": "add",
+            "content": "                      value={dependency.type}"
+          },
+          {
+            "type": "add",
+            "content": "                      onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                        const newDeps = {...cellInput.dependencies};"
+          },
+          {
+            "type": "add",
+            "content": "                        switch (e.target.value) {"
+          },
+          {
+            "type": "add",
+            "content": "                          case 'cellReference':"
+          },
+          {
+            "type": "add",
+            "content": "                            newDeps[depKey] = {...dependency, type: 'cellReference'};"
+          },
+          {
+            "type": "add",
+            "content": "                            break;"
+          },
+          {
+            "type": "add",
+            "content": "                          case 'outputReference':"
+          },
+          {
+            "type": "add",
+            "content": "                            newDeps[depKey] = {"
+          },
+          {
+            "type": "add",
+            "content": "                              type: 'outputReference',"
+          },
+          {
+            "type": "add",
+            "content": "                              field: '',"
+          },
+          {
+            "type": "add",
+            "content": "                              cellId: dependency.cellId,"
+          },
+          {
+            "type": "add",
+            "content": "                              forEach: dependency.forEach,"
+          },
+          {
+            "type": "add",
+            "content": "                            };"
+          },
+          {
+            "type": "add",
+            "content": "                            break;"
+          },
+          {
+            "type": "add",
+            "content": "                          default:"
+          },
+          {
+            "type": "add",
+            "content": "                            break;"
+          },
+          {
+            "type": "add",
+            "content": "                        }"
+          },
+          {
+            "type": "add",
+            "content": "                        onSave({...cellInput, dependencies: newDeps});"
+          },
+          {
+            "type": "add",
+            "content": "                      }}"
+          },
+          {
+            "type": "add",
+            "content": "                      className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 flex-1\""
+          },
+          {
+            "type": "add",
+            "content": "                    >"
+          },
+          {
+            "type": "add",
+            "content": "                      <option value=\"cellReference\">Cell Reference</option>"
+          },
+          {
+            "type": "add",
+            "content": "                      <option value=\"outputReference\">Output Reference</option>"
+          },
+          {
+            "type": "add",
+            "content": "                    </select>"
+          },
+          {
+            "type": "add",
+            "content": "                    <select"
+          },
+          {
+            "type": "add",
+            "content": "                      value={dependency.cellId}"
+          },
+          {
+            "type": "add",
+            "content": "                      onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                        const newDeps = {...cellInput.dependencies};"
+          },
+          {
+            "type": "add",
+            "content": "                        newDeps[depKey] = {...dependency, cellId: e.target.value};"
+          },
+          {
+            "type": "add",
+            "content": "                        onSave({...cellInput, dependencies: newDeps});"
+          },
+          {
+            "type": "add",
+            "content": "                      }}"
+          },
+          {
+            "type": "add",
+            "content": "                      className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 flex-1\""
+          },
+          {
+            "type": "add",
+            "content": "                    >"
+          },
+          {
+            "type": "add",
+            "content": "                      {kernel?.buildReferencesAbove(dependency.type, cellInput.id).map((cell) => {"
+          },
+          {
+            "type": "add",
+            "content": "                        return <option value={cell.id}>{cell.id}</option>;"
+          },
+          {
+            "type": "add",
+            "content": "                      })}"
+          },
+          {
+            "type": "add",
+            "content": "                    </select>"
+          },
+          {
+            "type": "add",
+            "content": "                    {dependency.type === 'outputReference' && ("
+          },
+          {
+            "type": "add",
+            "content": "                      <select"
+          },
+          {
+            "type": "add",
+            "content": "                        value={dependency.field}"
+          },
+          {
+            "type": "add",
+            "content": "                        onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                          const newDeps = {...cellInput.dependencies};"
+          },
+          {
+            "type": "add",
+            "content": "                          newDeps[depKey] = {...dependency, field: e.target.value};"
+          },
+          {
+            "type": "add",
+            "content": "                          onSave({...cellInput, dependencies: newDeps});"
+          },
+          {
+            "type": "add",
+            "content": "                        }}"
+          },
+          {
+            "type": "add",
+            "content": "                        className=\"bg-[#3c3c3c] text-[#d4d4d4] border border-[#6b6b6b] rounded px-2 py-1 flex-1\""
+          },
+          {
+            "type": "add",
+            "content": "                      >"
+          },
+          {
+            "type": "add",
+            "content": "                        <option value=\"\">Select Field</option>"
+          },
+          {
+            "type": "add",
+            "content": "                        {kernel?.buildFieldsFromOutputReference(dependency.cellId, cellInput.id).map((cell) => {"
+          },
+          {
+            "type": "add",
+            "content": "                          return <option value={cell.id}>{cell.id}</option>;"
+          },
+          {
+            "type": "add",
+            "content": "                        })}"
+          },
+          {
+            "type": "add",
+            "content": "                      </select>"
+          },
+          {
+            "type": "add",
+            "content": "                    )}"
+          },
+          {
+            "type": "add",
+            "content": "                    <label className=\"text-[#d4d4d4]\">Iterate</label>"
+          },
+          {
+            "type": "add",
+            "content": "                    <input"
+          },
+          {
+            "type": "add",
+            "content": "                      type={'checkbox'}"
+          },
+          {
+            "type": "add",
+            "content": "                      checked={dependency.forEach}"
+          },
+          {
+            "type": "add",
+            "content": "                      onChange={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                        const newDeps = {...cellInput.dependencies};"
+          },
+          {
+            "type": "add",
+            "content": "                        newDeps[depKey] = {...dependency, forEach: e.target.checked};"
+          },
+          {
+            "type": "add",
+            "content": "                        onSave({...cellInput, dependencies: newDeps});"
+          },
+          {
+            "type": "add",
+            "content": "                      }}"
+          },
+          {
+            "type": "add",
+            "content": "                      className=\"form-checkbox h-5 w-5 text-[#0e639c] bg-[#3c3c3c] border-[#6b6b6b] rounded\""
+          },
+          {
+            "type": "add",
+            "content": "                    ></input>"
+          },
+          {
+            "type": "add",
+            "content": "                    <button"
+          },
+          {
+            "type": "add",
+            "content": "                      onClick={() => {"
+          },
+          {
+            "type": "add",
+            "content": "                        const newDeps = {...cellInput.dependencies};"
+          },
+          {
+            "type": "add",
+            "content": "                        delete newDeps[depKey];"
+          },
+          {
+            "type": "add",
+            "content": "                        onSave({...cellInput, dependencies: newDeps});"
+          },
+          {
+            "type": "add",
+            "content": "                      }}"
+          },
+          {
+            "type": "add",
+            "content": "                      className=\"bg-[#c53030] hover:bg-[#e53e3e] text-white px-2 py-1 rounded\""
+          },
+          {
+            "type": "add",
+            "content": "                    >"
+          },
+          {
+            "type": "add",
+            "content": "                      Remove"
+          },
+          {
+            "type": "add",
+            "content": "                    </button>"
+          },
+          {
+            "type": "add",
+            "content": "                  </div>"
+          },
+          {
+            "type": "add",
+            "content": "                ))}"
+          },
+          {
+            "type": "add",
+            "content": "              <button"
+          },
+          {
+            "type": "add",
+            "content": "                onClick={() => {"
+          },
+          {
+            "type": "add",
+            "content": "                  const newDeps = {...cellInput.dependencies};"
+          },
+          {
+            "type": "add",
+            "content": "                  let key = 'newDependency';"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "                  while (newDeps[key]) {"
+          },
+          {
+            "type": "add",
+            "content": "                    key = key + '1';"
+          },
+          {
+            "type": "add",
+            "content": "                  }"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "                  newDeps[key] = {cellId: '', forEach: false, type: 'cellReference'};"
+          },
+          {
+            "type": "add",
+            "content": "                  onSave({...cellInput, dependencies: newDeps});"
+          },
+          {
+            "type": "add",
+            "content": "                }}"
+          },
+          {
+            "type": "add",
+            "content": "                className=\"bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded\""
+          },
+          {
+            "type": "add",
+            "content": "              >"
+          },
+          {
+            "type": "add",
+            "content": "                Add Dependency"
+          },
+          {
+            "type": "add",
+            "content": "              </button>"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "          </div>"
+          },
+          {
+            "type": "add",
+            "content": "        )}"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "        <button onClick={() => setEditDependencies(!editDependencies)} className=\"bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded mb-4\">"
+          },
+          {
+            "type": "add",
+            "content": "          <PencilIcon className=\"w-5 h-5 mr-2 inline\" />"
+          },
+          {
+            "type": "add",
+            "content": "          Edit Dependencies"
+          },
+          {
+            "type": "add",
+            "content": "        </button>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "        {!editing ? ("
+          },
+          {
+            "type": "add",
+            "content": "          <CellTypeComponent cellType={cellInput.input} dependencies={cellInput.dependencies} />"
+          },
+          {
+            "type": "add",
+            "content": "        ) : ("
+          },
+          {
+            "type": "add",
+            "content": "          <div>"
+          },
+          {
+            "type": "add",
+            "content": "            <CellTypeComponentEditable"
+          },
+          {
+            "type": "add",
+            "content": "              cellType={cellInput.input}"
+          },
+          {
+            "type": "add",
+            "content": "              onSave={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "                cellInput.input = e;"
+          },
+          {
+            "type": "add",
+            "content": "                onSave(cellInput);"
+          },
+          {
+            "type": "add",
+            "content": "              }}"
+          },
+          {
+            "type": "add",
+            "content": "            />"
+          },
+          {
+            "type": "add",
+            "content": "          </div>"
+          },
+          {
+            "type": "add",
+            "content": "        )}"
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"mt-4 space-x-2\">"
+          },
+          {
+            "type": "add",
+            "content": "          <button onClick={() => setEditing(!editing)} className=\"bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded\">"
+          },
+          {
+            "type": "add",
+            "content": "            <PencilIcon className=\"w-5 h-5 mr-2 inline\" />"
+          },
+          {
+            "type": "add",
+            "content": "            {editing ? 'Finish Editing' : 'Edit'}"
+          },
+          {
+            "type": "add",
+            "content": "          </button>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "          {processing && <p className=\"text-[#d7ba7d]\">Processing...</p>}"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "      </div>"
+          },
+          {
+            "type": "add",
+            "content": "    </>"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": "};"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "const CellOutputComponent = ({"
+          },
+          {
+            "type": "add",
+            "content": "  output,"
+          },
+          {
+            "type": "add",
+            "content": "  outputIndex,"
+          },
+          {
+            "type": "add",
+            "content": "  input,"
+          },
+          {
+            "type": "add",
+            "content": "}: {"
+          },
+          {
+            "type": "add",
+            "content": "  output: CellOutput;"
+          },
+          {
+            "type": "add",
+            "content": "  outputIndex?: number;"
+          },
+          {
+            "type": "add",
+            "content": "  input: CellInput;"
+          },
+          {
+            "type": "add",
+            "content": "}) => {"
+          },
+          {
+            "type": "add",
+            "content": "  const [editing, setEditing] = useState(false);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const [collapseOutputReferences, setCollapseOutputReferences] = useState(true);"
+          },
+          {
+            "type": "add",
+            "content": "  return ("
+          },
+          {
+            "type": "add",
+            "content": "    <div className=\"mt-6\">"
+          },
+          {
+            "type": "add",
+            "content": "      <h3 className=\"text-lg font-normal mb-3\">Output {outputIndex}</h3>"
+          },
+          {
+            "type": "add",
+            "content": "      <div className=\"bg-[#252526] border border-[#3c3c3c] rounded-lg p-4\">"
+          },
+          {
+            "type": "add",
+            "content": "        {!editing ? ("
+          },
+          {
+            "type": "add",
+            "content": "          !output.processed ? ("
+          },
+          {
+            "type": "add",
+            "content": "            <p className=\"text-[#d7ba7d]\">Output not processed yet</p>"
+          },
+          {
+            "type": "add",
+            "content": "          ) : output.error ? ("
+          },
+          {
+            "type": "add",
+            "content": "            <ErrorDisplay error={output.error} />"
+          },
+          {
+            "type": "add",
+            "content": "          ) : !output.output ? ("
+          },
+          {
+            "type": "add",
+            "content": "            <p className=\"text-[#9cdcfe]\">No output available</p>"
+          },
+          {
+            "type": "add",
+            "content": "          ) : ("
+          },
+          {
+            "type": "add",
+            "content": "            <>"
+          },
+          {
+            "type": "add",
+            "content": "              <CellTypeComponent cellType={output.output} dependencies={input.dependencies} />"
+          },
+          {
+            "type": "add",
+            "content": "              <button"
+          },
+          {
+            "type": "add",
+            "content": "                onClick={() => setCollapseOutputReferences(!collapseOutputReferences)}"
+          },
+          {
+            "type": "add",
+            "content": "                className=\"bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded mt-4\""
+          },
+          {
+            "type": "add",
+            "content": "              >"
+          },
+          {
+            "type": "add",
+            "content": "                <PencilIcon className=\"w-5 h-5 mr-2 inline\" />"
+          },
+          {
+            "type": "add",
+            "content": "                {collapseOutputReferences ? 'Show Output References' : 'Hide Output References'}"
+          },
+          {
+            "type": "add",
+            "content": "              </button>"
+          },
+          {
+            "type": "add",
+            "content": "              {!collapseOutputReferences && output.outputReferences && ("
+          },
+          {
+            "type": "add",
+            "content": "                <div className=\"bg-[#252526] border border-[#3c3c3c] rounded-lg p-3 mt-4\">"
+          },
+          {
+            "type": "add",
+            "content": "                  <p className=\"font-normal text-[#d4d4d4] mb-2\">Output References:</p>"
+          },
+          {
+            "type": "add",
+            "content": "                  <ul className=\"list-disc list-inside space-y-1\">"
+          },
+          {
+            "type": "add",
+            "content": "                    {Object.entries(output.outputReferences).map(([key, value], index) => ("
+          },
+          {
+            "type": "add",
+            "content": "                      <li key={index} className=\"text-[#9cdcfe]\">"
+          },
+          {
+            "type": "add",
+            "content": "                        <strong>{key}:</strong> {value ? <JsonViewer json={value} /> : 'No output'}"
+          },
+          {
+            "type": "add",
+            "content": "                      </li>"
+          },
+          {
+            "type": "add",
+            "content": "                    ))}"
+          },
+          {
+            "type": "add",
+            "content": "                  </ul>"
+          },
+          {
+            "type": "add",
+            "content": "                </div>"
+          },
+          {
+            "type": "add",
+            "content": "              )}"
+          },
+          {
+            "type": "add",
+            "content": "            </>"
+          },
+          {
+            "type": "add",
+            "content": "          )"
+          },
+          {
+            "type": "add",
+            "content": "        ) : ("
+          },
+          {
+            "type": "add",
+            "content": "          <CellTypeComponentEditable"
+          },
+          {
+            "type": "add",
+            "content": "            cellType={output.output}"
+          },
+          {
+            "type": "add",
+            "content": "            onSave={(e) => {"
+          },
+          {
+            "type": "add",
+            "content": "              output.output = e;"
+          },
+          {
+            "type": "add",
+            "content": "            }}"
+          },
+          {
+            "type": "add",
+            "content": "          />"
+          },
+          {
+            "type": "add",
+            "content": "        )}"
+          },
+          {
+            "type": "add",
+            "content": "      </div>"
+          },
+          {
+            "type": "add",
+            "content": "      <button onClick={() => setEditing(!editing)} className=\"bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded mt-4\">"
+          },
+          {
+            "type": "add",
+            "content": "        <PencilIcon className=\"w-5 h-5 mr-2 inline\" />"
+          },
+          {
+            "type": "add",
+            "content": "        {editing ? 'Finish Editing' : 'Edit'}"
+          },
+          {
+            "type": "add",
+            "content": "      </button>"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "      {output.outputMeta && ("
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"mt-2 text-sm text-[#d4d4d4]\">"
+          },
+          {
+            "type": "add",
+            "content": "          <p>Tokens In: {output.outputMeta.tokensIn}</p>"
+          },
+          {
+            "type": "add",
+            "content": "          <p>Tokens Out: {output.outputMeta.tokensOut}</p>"
+          },
+          {
+            "type": "add",
+            "content": "          <p>Cost In: ${output.outputMeta.costIn.toFixed(6)}</p>"
+          },
+          {
+            "type": "add",
+            "content": "          <p>Cost Out: ${output.outputMeta.costOut.toFixed(6)}</p>"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "      )}"
+          },
+          {
+            "type": "add",
+            "content": "    </div>"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": "};"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "const ErrorDisplay = ({error}: {error: {error: string}}) => {"
+          },
+          {
+            "type": "add",
+            "content": "  return ("
+          },
+          {
+            "type": "add",
+            "content": "    <div className=\"bg-[#3c1e1e] text-[#f87171] p-2 rounded\">"
+          },
+          {
+            "type": "add",
+            "content": "      <p className=\"font-normal\">Error:</p>"
+          },
+          {
+            "type": "add",
+            "content": "      <p>{error.error}</p>"
+          },
+          {
+            "type": "add",
+            "content": "    </div>"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": "};"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "const useNotebookStore = create((set) => ({"
+          },
+          {
+            "type": "add",
+            "content": "}));"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "function useEffectAsync(effect: () => Promise<void>, deps: React.DependencyList) {"
+          },
+          {
+            "type": "add",
+            "content": "  React.useEffect(() => {"
+          },
+          {
+            "type": "add",
+            "content": "    effect();"
+          },
+          {
+            "type": "add",
+            "content": "  }, deps);"
+          },
+          {
+            "type": "add",
+            "content": "}"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "function JsonViewer({json}: {json: any}) {"
+          },
+          {
+            "type": "add",
+            "content": "  const [expandedKeys, setExpandedKeys] = useState(new Set());"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const toggleExpand = (key: string) => {"
+          },
+          {
+            "type": "add",
+            "content": "    const newExpandedKeys = new Set(expandedKeys);"
+          },
+          {
+            "type": "add",
+            "content": "    if (newExpandedKeys.has(key)) {"
+          },
+          {
+            "type": "add",
+            "content": "      newExpandedKeys.delete(key);"
+          },
+          {
+            "type": "add",
+            "content": "    } else {"
+          },
+          {
+            "type": "add",
+            "content": "      newExpandedKeys.add(key);"
+          },
+          {
+            "type": "add",
+            "content": "    }"
+          },
+          {
+            "type": "add",
+            "content": "    setExpandedKeys(newExpandedKeys);"
+          },
+          {
+            "type": "add",
+            "content": "  };"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const renderValue = (value: any, key = '', level = 0) => {"
+          },
+          {
+            "type": "add",
+            "content": "    if (typeof value === 'object' && value !== null) {"
+          },
+          {
+            "type": "add",
+            "content": "      const isArray = Array.Array = Array.Array = Array.Certainly, I'll continue with the modifications:"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "      const isArray = Array.isArray(value);"
+          },
+          {
+            "type": "add",
+            "content": "      const brackets = isArray ? ['[', ']'] : ['{', '}'];"
+          },
+          {
+            "type": "add",
+            "content": "      const isExpanded = expandedKeys.has(key);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "      return ("
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"ml-4\">"
+          },
+          {
+            "type": "add",
+            "content": "          <span className=\"cursor-pointer text-[#9cdcfe] hover:text-[#d4d4d4]\" onClick={() => toggleExpand(key)}>"
+          },
+          {
+            "type": "add",
+            "content": "            {isExpanded ? '▼' : '▶'} {key}"
+          },
+          {
+            "type": "add",
+            "content": "          </span>"
+          },
+          {
+            "type": "add",
+            "content": "          {isExpanded && ("
+          },
+          {
+            "type": "add",
+            "content": "            <div className=\"ml-4\">"
+          },
+          {
+            "type": "add",
+            "content": "              {Object.entries(value).map(([k, v], index) => ("
+          },
+          {
+            "type": "add",
+            "content": "                <div key={k}>{renderValue(v, `${key}.${k}`, level + 1)}</div>"
+          },
+          {
+            "type": "add",
+            "content": "              ))}"
+          },
+          {
+            "type": "add",
+            "content": "            </div>"
+          },
+          {
+            "type": "add",
+            "content": "          )}"
+          },
+          {
+            "type": "add",
+            "content": "          {!isExpanded && ("
+          },
+          {
+            "type": "add",
+            "content": "            <span>"
+          },
+          {
+            "type": "add",
+            "content": "              {brackets[0]}...{brackets[1]}"
+          },
+          {
+            "type": "add",
+            "content": "            </span>"
+          },
+          {
+            "type": "add",
+            "content": "          )}"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "      );"
+          },
+          {
+            "type": "add",
+            "content": "    } else {"
+          },
+          {
+            "type": "add",
+            "content": "      return ("
+          },
+          {
+            "type": "add",
+            "content": "        <div className=\"ml-4\">"
+          },
+          {
+            "type": "add",
+            "content": "          <span className=\"text-[#9cdcfe]\">{key}: </span>"
+          },
+          {
+            "type": "add",
+            "content": "          <span className={`${typeof value === 'string' ? 'text-[#ce9178]' : 'text-[#b5cea8]'}`}>"
+          },
+          {
+            "type": "add",
+            "content": "            {JSON.stringify(value)}"
+          },
+          {
+            "type": "add",
+            "content": "          </span>"
+          },
+          {
+            "type": "add",
+            "content": "        </div>"
+          },
+          {
+            "type": "add",
+            "content": "      );"
+          },
+          {
+            "type": "add",
+            "content": "    }"
+          },
+          {
+            "type": "add",
+            "content": "  };"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  try {"
+          },
+          {
+            "type": "add",
+            "content": "    return <div className=\"font-mono text-sm text-[#d4d4d4]\">{renderValue(json)}</div>;"
+          },
+          {
+            "type": "add",
+            "content": "  } catch (error) {"
+          },
+          {
+            "type": "add",
+            "content": "    return <pre className=\"text-sm overflow-x-auto text-[#d4d4d4]\">{json}</pre>;"
+          },
+          {
+            "type": "add",
+            "content": "  }"
+          },
+          {
+            "type": "add",
+            "content": "}"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "function EditableJsonViewer({json, onUpdate}: {json: any; onUpdate: (json: any) => void}) {"
+          },
+          {
+            "type": "add",
+            "content": "  const [expandedKeys, setExpandedKeys] = useState(new Set<string>());"
+          },
+          {
+            "type": "add",
+            "content": "  const [editingKey, setEditingKey] = useState<string | null>(null);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const toggleExpand = useCallback((key: string) => {"
+          },
+          {
+            "type": "add",
+            "content": "    setExpandedKeys((prev) => {"
+          },
+          {
+            "type": "add",
+            "content": "      const newSet = new Set(prev);"
+          },
+          {
+            "type": "add",
+            "content": "      if (newSet.has(key)) {"
+          },
+          {
+            "type": "add",
+            "content": "        newSet.delete(key);"
+          },
+          {
+            "type": "add",
+            "content": "      } else {"
+          },
+          {
+            "type": "add",
+            "content": "        newSet.add(key);"
+          },
+          {
+            "type": "add",
+            "content": "      }"
+          },
+          {
+            "type": "add",
+            "content": "      return newSet;"
+          },
+          {
+            "type": "add",
+            "content": "    });"
+          },
+          {
+            "type": "add",
+            "content": "  }, []);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const startEditing = useCallback((key: string) => {"
+          },
+          {
+            "type": "add",
+            "content": "    setEditingKey(key);"
+          },
+          {
+            "type": "add",
+            "content": "  }, []);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const saveEdit = useCallback("
+          },
+          {
+            "type": "add",
+            "content": "    (path: string, newValue: string) => {"
+          },
+          {
+            "type": "add",
+            "content": "      try {"
+          },
+          {
+            "type": "add",
+            "content": "        const pathArray = path.split('.');"
+          },
+          {
+            "type": "add",
+            "content": "        const newJson = JSON.parse(JSON.stringify(json));"
+          },
+          {
+            "type": "add",
+            "content": "        let current = newJson;"
+          },
+          {
+            "type": "add",
+            "content": "        for (let i = 0; i < pathArray.length - 1; i++) {"
+          },
+          {
+            "type": "add",
+            "content": "          current = current[pathArray[i]];"
+          },
+          {
+            "type": "add",
+            "content": "        }"
+          },
+          {
+            "type": "add",
+            "content": "        current[pathArray[pathArray.length - 1]] = JSON.parse(newValue);"
+          },
+          {
+            "type": "add",
+            "content": "        onUpdate(newJson);"
+          },
+          {
+            "type": "add",
+            "content": "        setEditingKey(null);"
+          },
+          {
+            "type": "add",
+            "content": "      } catch (error) {"
+          },
+          {
+            "type": "add",
+            "content": "        alert('Invalid JSON. Please check your input.');"
+          },
+          {
+            "type": "add",
+            "content": "      }"
+          },
+          {
+            "type": "add",
+            "content": "    },"
+          },
+          {
+            "type": "add",
+            "content": "    [json, onUpdate]"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  const renderEditableValue = useCallback("
+          },
+          {
+            "type": "add",
+            "content": "    (value: any, key = '', path = '') => {"
+          },
+          {
+            "type": "add",
+            "content": "      const currentPath = path ? `${path}.${key}` : key;"
+          },
+          {
+            "type": "add",
+            "content": "      const isEditing = editingKey === currentPath;"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "      if (typeof value === 'object' && value !== null) {"
+          },
+          {
+            "type": "add",
+            "content": "        const isArray = Array.isArray(value);"
+          },
+          {
+            "type": "add",
+            "content": "        const brackets = isArray ? ['[', ']'] : ['{', '}'];"
+          },
+          {
+            "type": "add",
+            "content": "        const isExpanded = expandedKeys.has(currentPath);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "        return ("
+          },
+          {
+            "type": "add",
+            "content": "          <div className=\"ml-4\">"
+          },
+          {
+            "type": "add",
+            "content": "            <span"
+          },
+          {
+            "type": "add",
+            "content": "              className=\"cursor-pointer text-[#9cdcfe] hover:text-[#d4d4d4]\""
+          },
+          {
+            "type": "add",
+            "content": "              onClick={() => toggleExpand(currentPath)}"
+          },
+          {
+            "type": "add",
+            "content": "            >"
+          },
+          {
+            "type": "add",
+            "content": "              {isExpanded ? '▼' : '▶'} {key}"
+          },
+          {
+            "type": "add",
+            "content": "            </span>"
+          },
+          {
+            "type": "add",
+            "content": "            {isEditing ? ("
+          },
+          {
+            "type": "add",
+            "content": "              <EditableValue"
+          },
+          {
+            "type": "add",
+            "content": "                value={JSON.stringify(value, null, 2)}"
+          },
+          {
+            "type": "add",
+            "content": "                onSave={(newValue) => saveEdit(currentPath, newValue)}"
+          },
+          {
+            "type": "add",
+            "content": "                onCancel={() => setEditingKey(null)}"
+          },
+          {
+            "type": "add",
+            "content": "              />"
+          },
+          {
+            "type": "add",
+            "content": "            ) : ("
+          },
+          {
+            "type": "add",
+            "content": "              <>"
+          },
+          {
+            "type": "add",
+            "content": "                <button onClick={() => startEditing(currentPath)} className=\"text-[#9cdcfe] hover:text-[#d4d4d4] ml-2\">"
+          },
+          {
+            "type": "add",
+            "content": "                  Edit"
+          },
+          {
+            "type": "add",
+            "content": "                </button>"
+          },
+          {
+            "type": "add",
+            "content": "                {isExpanded && ("
+          },
+          {
+            "type": "add",
+            "content": "                  <div className=\"ml-4\">"
+          },
+          {
+            "type": "add",
+            "content": "                    {Object.entries(value).map(([k, v]) => ("
+          },
+          {
+            "type": "add",
+            "content": "                      <div key={k}>{renderEditableValue(v, k, currentPath)}</div>"
+          },
+          {
+            "type": "add",
+            "content": "                    ))}"
+          },
+          {
+            "type": "add",
+            "content": "                  </div>"
+          },
+          {
+            "type": "add",
+            "content": "                )}"
+          },
+          {
+            "type": "add",
+            "content": "                {!isExpanded && ("
+          },
+          {
+            "type": "add",
+            "content": "                  <span>"
+          },
+          {
+            "type": "add",
+            "content": "                    {brackets[0]}...{brackets[1]}"
+          },
+          {
+            "type": "add",
+            "content": "                  </span>"
+          },
+          {
+            "type": "add",
+            "content": "                )}"
+          },
+          {
+            "type": "add",
+            "content": "              </>"
+          },
+          {
+            "type": "add",
+            "content": "            )}"
+          },
+          {
+            "type": "add",
+            "content": "          </div>"
+          },
+          {
+            "type": "add",
+            "content": "        );"
+          },
+          {
+            "type": "add",
+            "content": "      } else {"
+          },
+          {
+            "type": "add",
+            "content": "        return ("
+          },
+          {
+            "type": "add",
+            "content": "          <div className=\"ml-4 flex items-center\">"
+          },
+          {
+            "type": "add",
+            "content": "            <span className=\"text-[#9cdcfe]\">{key}: </span>"
+          },
+          {
+            "type": "add",
+            "content": "            {isEditing ? ("
+          },
+          {
+            "type": "add",
+            "content": "              <EditableValue"
+          },
+          {
+            "type": "add",
+            "content": "                value={JSON.stringify(value)}"
+          },
+          {
+            "type": "add",
+            "content": "                onSave={(newValue) => saveEdit(currentPath, newValue)}"
+          },
+          {
+            "type": "add",
+            "content": "                onCancel={() => setEditingKey(null)}"
+          },
+          {
+            "type": "add",
+            "content": "              />"
+          },
+          {
+            "type": "add",
+            "content": "            ) : ("
+          },
+          {
+            "type": "add",
+            "content": "              <>"
+          },
+          {
+            "type": "add",
+            "content": "                <span className={`${typeof value === 'string' ? 'text-[#ce9178]' : 'text-[#b5cea8]'} mr-2`}>"
+          },
+          {
+            "type": "add",
+            "content": "                  {JSON.stringify(value)}"
+          },
+          {
+            "type": "add",
+            "content": "                </span>"
+          },
+          {
+            "type": "add",
+            "content": "                <button onClick={() => startEditing(currentPath)} className=\"text-[#9cdcfe] hover:text-[#d4d4d4]\">"
+          },
+          {
+            "type": "add",
+            "content": "                  Edit"
+          },
+          {
+            "type": "add",
+            "content": "                </button>"
+          },
+          {
+            "type": "add",
+            "content": "              </>"
+          },
+          {
+            "type": "add",
+            "content": "            )}"
+          },
+          {
+            "type": "add",
+            "content": "          </div>"
+          },
+          {
+            "type": "add",
+            "content": "        );"
+          },
+          {
+            "type": "add",
+            "content": "      }"
+          },
+          {
+            "type": "add",
+            "content": "    },"
+          },
+          {
+            "type": "add",
+            "content": "    [expandedKeys, editingKey, toggleExpand, startEditing, saveEdit]"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  return <div className=\"font-mono text-sm text-[#d4d4d4]\">{renderEditableValue(json)}</div>;"
+          },
+          {
+            "type": "add",
+            "content": "}"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "function EditableValue({"
+          },
+          {
+            "type": "add",
+            "content": "  value,"
+          },
+          {
+            "type": "add",
+            "content": "  onSave,"
+          },
+          {
+            "type": "add",
+            "content": "  onCancel,"
+          },
+          {
+            "type": "add",
+            "content": "}: {"
+          },
+          {
+            "type": "add",
+            "content": "  value: string;"
+          },
+          {
+            "type": "add",
+            "content": "  onSave: (value: string) => void;"
+          },
+          {
+            "type": "add",
+            "content": "  onCancel: () => void;"
+          },
+          {
+            "type": "add",
+            "content": "}) {"
+          },
+          {
+            "type": "add",
+            "content": "  const [editValue, setEditValue] = useState(value);"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": "  return ("
+          },
+          {
+            "type": "add",
+            "content": "    <>"
+          },
+          {
+            "type": "add",
+            "content": "      <textarea"
+          },
+          {
+            "type": "add",
+            "content": "        value={editValue}"
+          },
+          {
+            "type": "add",
+            "content": "        onChange={(e) => setEditValue(e.target.value)}"
+          },
+          {
+            "type": "add",
+            "content": "        className=\"bg-[#1e1e1e] text-[#d4d4d4] border border-[#3c3c3c] rounded px-2 py-1 mr-2 w-full\""
+          },
+          {
+            "type": "add",
+            "content": "        rows={editValue.split('\\n').length}"
+          },
+          {
+            "type": "add",
+            "content": "      />"
+          },
+          {
+            "type": "add",
+            "content": "      <button"
+          },
+          {
+            "type": "add",
+            "content": "        onClick={() => onSave(editValue)}"
+          },
+          {
+            "type": "add",
+            "content": "        className=\"bg-[#0e639c] hover:bg-[#1177bb] text-white px-2 py-1 rounded\""
+          },
+          {
+            "type": "add",
+            "content": "      >"
+          },
+          {
+            "type": "add",
+            "content": "        Save"
+          },
+          {
+            "type": "add",
+            "content": "      </button>"
+          },
+          {
+            "type": "add",
+            "content": "      <button onClick={onCancel} className=\"bg-[#c53030] hover:bg-[#e53e3e] text-white px-2 py-1 rounded ml-2\">"
+          },
+          {
+            "type": "add",
+            "content": "        Cancel"
+          },
+          {
+            "type": "add",
+            "content": "      </button>"
+          },
+          {
+            "type": "add",
+            "content": "    </>"
+          },
+          {
+            "type": "add",
+            "content": "  );"
+          },
+          {
+            "type": "add",
+            "content": "}"
+          },
+          {
+            "type": "add",
+            "content": ""
+          },
+          {
+            "type": "add",
+            "content": ""
+          }
+        ],
+        "partial": false,
+        "replaceFile": true
+      }
+    ],
+    "stepsResult": [
+      {
+        "success": true,
+        "idNumber": 0
+      }
+    ]
+  }
+]

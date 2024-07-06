@@ -11,6 +11,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
     "@monaco-editor/react": "^4.6.0",
     "@reduxjs/toolkit": "^1.9.5",
     "clsx": "^2.1.1",

@@ -1,0 +1,84 @@
+diff --git a/src/Pages/Home/Home.tsx b/src/Pages/Home/Home.tsx
+index abcdefg..hijklmn 100644
+--- a/src/Home.tsx
++++ b/src/Home.tsx
+@@ -1,5 +1,5 @@
+-import React, {Fragment, useCallback, useContext, useEffect, useState} from 'react';
++import React, {Fragment, useCallback, useContext, useEffect, useState, useMemo} from 'react';
+ import {produce} from 'immer';
+
+@@ -56,14 +56,19 @@ export const Home = () => {
+       // Local storage load and update the state using Immer
+       ldb.get('notebook', (nb: string) => {
+         if (nb) {
+-          setNotebook(JSON.parse(nb) as Notebook);
++          setNotebook(produce(draft => {
++            return JSON.parse(nb) as Notebook;
++          }));
+         } else {
+-          setNotebook({
++          setNotebook(produce(draft => {
++            return {
+             cells: [],
+             metadata: {
+               title: 'Untitled Notebook',
+             },
+             assetLookup: [],
++            };
++          }));
+         }
+       });
+     }, []);
+
+@@ -83,7 +88,10 @@ export const Home = () => {
+           DebounceUtils.debounce('notebook', 1000, () => {
+             try {
+               console.log('Saving notebook');
+-              ldb.set('notebook', JSON.stringify(notebook));
++              ldb.set('notebook', JSON.stringify(produce(notebook, draft => {
++                return draft;
++              })));
++              localStorage.setItem('notebook', JSON.stringify(notebook));
+             } catch (e) {
+               console.error(e);
+             }
+@@ -239,7 +247,12 @@ const NotebookViewer = ({notebook, saveNotebook}: {notebook: Notebook; saveNoteb
+                 kernelRef.current?.addCell(name);
+               }
+             }}
+-            className="bg-purple-700 hover:bg-purple-800 text-white px-3 py-1 rounded flex items-center"
++            className="bg-purple-700 hover:bg-purple-800 text-white px-3 py-1 rounded flex items-center">
++            onClick={() => {
++              saveNotebook(produce(notebook, draft => {
++                draft.cells.push(createNewCell(name));
++              }));
++            }}
+           >
+             Add Cell
+           </button>
+@@ -380,7 +393,11 @@ const CellContainer = ({
+           onSave={(e) => {
+             if (!e) {
+               kernelRef.current?.removeCell(cell.input.id);
+             } else {
+-              kernelRef.current?.updateCell(e);
++              kernelRef.current?.updateCell(produce(cell, draft => {
++                return e;
++              }));
++              saveNotebook(produce(notebook, draft => {
++                draft.cells[cellIndex] = e;
++              }));
+             }
+           }}
+           onMove={(cell, direction) => {
+@@ -467,7 +484,11 @@ const CellInputComponent = ({
+             onSave={(e) => {
+               cell.input = e;
+               onSave(cell);
++              saveNotebook(produce(notebook, draft => {
++                const cellIndex = draft.cells.findIndex(c => c.input.id === cell.input.id);
++                draft.cells[cellIndex].input = e;
++              }));
+             }}
+           />
+         )}
